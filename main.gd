@@ -1,6 +1,7 @@
 extends Node3D
 
 static var skip_menu := false
+static var fx_on := true
 
 const SPEED := 7.0
 const JUMP_V := 10.0
@@ -16,6 +17,11 @@ var panel: ColorRect
 var title_label: Label
 var button: Button
 var pause_btn: Button
+var quality_btn: Button
+var sun_light: DirectionalLight3D
+var mat_cache := {}
+var was_floor := true
+var dust_t := 0.0
 var stick_base: Panel
 var stick_knob: Panel
 var sfx := {}
@@ -42,10 +48,26 @@ var movers: Array = []
 var hazards: Array = []
 
 func _ready() -> void:
+	Engine.physics_ticks_per_second = 120
+	RenderingServer.directional_shadow_atlas_set_size(2048, true)
+	RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_LOW)
 	var env := WorldEnvironment.new()
 	var e := Environment.new()
-	e.background_mode = Environment.BG_COLOR
-	e.background_color = Color(0.5, 0.8, 1.0)
+	var sky := Sky.new()
+	var sky_mat := ProceduralSkyMaterial.new()
+	sky_mat.sky_top_color = Color(0.25, 0.5, 0.9)
+	sky_mat.sky_horizon_color = Color(0.7, 0.85, 1.0)
+	sky_mat.ground_horizon_color = Color(0.7, 0.85, 1.0)
+	sky_mat.ground_bottom_color = Color(0.4, 0.6, 0.5)
+	sky.sky_material = sky_mat
+	e.background_mode = Environment.BG_SKY
+	e.sky = sky
+	e.fog_enabled = true
+	e.fog_light_color = Color(0.7, 0.85, 1.0)
+	e.fog_density = 0.005
+	e.adjustment_enabled = true
+	e.adjustment_saturation = 1.15
+	e.adjustment_contrast = 1.05
 	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	e.ambient_light_color = Color(1, 1, 1)
 	e.ambient_light_energy = 0.5
@@ -54,6 +76,11 @@ func _ready() -> void:
 
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-50, 30, 0)
+	sun.light_energy = 1.1
+	sun.shadow_enabled = fx_on
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
+	sun.directional_shadow_max_distance = 45.0
+	sun_light = sun
 	add_child(sun)
 
 	_build_sounds()
@@ -75,6 +102,7 @@ func _ready() -> void:
 
 	cam = Camera3D.new()
 	add_child(cam)
+	cam.position = respawn_pos + Vector3(0, 5, 8)
 
 	_build_ui()
 
@@ -111,6 +139,14 @@ func _build_ui() -> void:
 	pause_btn.position = Vector2(sz.x - 120, 20)
 	pause_btn.pressed.connect(_on_pause)
 	layer.add_child(pause_btn)
+
+	quality_btn = Button.new()
+	quality_btn.text = "HD" if fx_on else "LD"
+	quality_btn.add_theme_font_size_override("font_size", 36)
+	quality_btn.custom_minimum_size = Vector2(90, 90)
+	quality_btn.position = Vector2(sz.x - 230, 20)
+	quality_btn.pressed.connect(_on_quality)
+	layer.add_child(quality_btn)
 
 	panel = ColorRect.new()
 	panel.color = Color(0, 0, 0, 0.55)
@@ -290,13 +326,48 @@ func _on_pause() -> void:
 		stick_knob.hide()
 		show_panel("PAUSED", "RESUME")
 
+func _mat(c: Color) -> StandardMaterial3D:
+	var k := c.to_html()
+	if not mat_cache.has(k):
+		var m := StandardMaterial3D.new()
+		m.albedo_color = c
+		m.roughness = 0.85
+		mat_cache[k] = m
+	var out: StandardMaterial3D = mat_cache[k]
+	return out
+
+func _burst(pos: Vector3, color: Color, amount: int, speed: float) -> void:
+	if not fx_on:
+		return
+	var p := CPUParticles3D.new()
+	p.one_shot = true
+	p.amount = amount
+	p.lifetime = 0.5
+	p.explosiveness = 1.0
+	p.direction = Vector3.UP
+	p.spread = 70.0
+	p.initial_velocity_min = speed * 0.5
+	p.initial_velocity_max = speed
+	p.gravity = Vector3(0, -12, 0)
+	var bm := BoxMesh.new()
+	bm.size = Vector3(0.14, 0.14, 0.14)
+	bm.material = _mat(color)
+	p.mesh = bm
+	p.position = pos
+	p.emitting = true
+	add_child(p)
+	get_tree().create_timer(1.2).timeout.connect(p.queue_free)
+
+func _on_quality() -> void:
+	fx_on = not fx_on
+	sun_light.shadow_enabled = fx_on
+	quality_btn.text = "HD" if fx_on else "LD"
+
 func _mesh(size: Vector3, color: Color, pos: Vector3) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	var bm := BoxMesh.new()
 	bm.size = size
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = color
-	bm.material = mat
+	bm.material = _mat(color)
 	mi.mesh = bm
 	mi.position = pos
 	return mi
@@ -380,13 +451,19 @@ func _hurt() -> void:
 		show_panel("GAME OVER", "RETRY")
 		return
 	_play("hurt")
+	_burst(player.position, Color(1, 0.3, 0.3), 12, 4.0)
 	player.position = respawn_pos
 	player.velocity = Vector3.ZERO
 
 func _physics_process(delta: float) -> void:
-	cam.global_position = player.global_position + Vector3(0, 5, 8)
-	cam.look_at(player.global_position)
-	label.text = "Fruits: %d    Lives: %d" % [fruits, lives]
+	var cam_target := player.global_position + Vector3(0, 5, 8)
+	cam.global_position = cam.global_position.lerp(cam_target, minf(1.0, delta * 8.0))
+	cam.look_at(player.global_position + Vector3(0, 0.5, 0))
+	var hspeed := Vector2(player.velocity.x, player.velocity.z).length()
+	cam.fov = lerpf(cam.fov, 70.0 + hspeed * 1.2, minf(1.0, delta * 4.0))
+	var txt := "Fruits: %d    Lives: %d" % [fruits, lives]
+	if txt != label.text:
+		label.text = txt
 	if state != "play":
 		return
 
@@ -398,6 +475,7 @@ func _physics_process(delta: float) -> void:
 	elif jump_req:
 		player.velocity.y = JUMP_V
 		_play("jump")
+		_burst(player.position - Vector3(0, 0.7, 0), Color(1, 1, 1), 6, 2.5)
 	jump_req = false
 
 	if spin_req and spin_t <= 0.0:
@@ -409,6 +487,7 @@ func _physics_process(delta: float) -> void:
 		visual.rotation.y += delta * 4.0 * PI / SPIN_TIME
 		for c in crates.duplicate():
 			if is_instance_valid(c) and _near(c.position, 2.3):
+				_burst(c.position, Color(0.9, 0.7, 0.2), 14, 5.0)
 				crates.erase(c)
 				c.queue_free()
 				fruits += 1
@@ -416,6 +495,7 @@ func _physics_process(delta: float) -> void:
 		for en in enemies.duplicate():
 			if is_instance_valid(en) and _near(en.position, 2.3):
 				enemies.erase(en)
+				_burst(en.position, Color(0.8, 0.1, 0.1), 12, 5.0)
 				en.queue_free()
 				_play("stomp")
 		if spin_t <= 0.0:
@@ -431,7 +511,16 @@ func _physics_process(delta: float) -> void:
 		if on_it:
 			player.position += new_pos - old
 
+	var vy_before := player.velocity.y
 	player.move_and_slide()
+	var on_fl := player.is_on_floor()
+	if on_fl and not was_floor and vy_before < -5.0:
+		_burst(player.position - Vector3(0, 0.7, 0), Color(1, 1, 1), 8, 3.0)
+	was_floor = on_fl
+	dust_t -= delta
+	if on_fl and dust_t <= 0.0 and Vector2(player.velocity.x, player.velocity.z).length() > 4.0:
+		dust_t = 0.18
+		_burst(player.position - Vector3(0, 0.7, 0), Color(0.9, 0.85, 0.7), 3, 1.5)
 
 	for en in enemies.duplicate():
 		var c: Vector3 = en.get_meta("c")
@@ -443,6 +532,7 @@ func _physics_process(delta: float) -> void:
 		if player.position.distance_to(en.position) < 1.0:
 			if player.velocity.y < 0.0 and player.position.y > en.position.y + 0.6:
 				enemies.erase(en)
+				_burst(en.position, Color(0.8, 0.1, 0.1), 12, 5.0)
 				en.queue_free()
 				player.velocity.y = JUMP_V * 0.7
 				_play("stomp")
@@ -466,6 +556,7 @@ func _physics_process(delta: float) -> void:
 			respawn_pos = cps[i] + Vector3(0, 0.3, 0)
 			cp_mats[i].albedo_color = Color(0.2, 1.0, 0.2)
 			_play("check")
+			_burst(cps[i], Color(0.2, 1.0, 0.2), 16, 6.0)
 
 	if player.position.y < -15.0:
 		_hurt()
@@ -475,4 +566,5 @@ func _physics_process(delta: float) -> void:
 		won = true
 		state = "win"
 		_play("win")
+		_burst(player.position + Vector3(0, 1, 0), Color(1, 0.84, 0), 40, 8.0)
 		show_panel("YOU WIN!\nFruits: %d" % fruits, "PLAY AGAIN")
