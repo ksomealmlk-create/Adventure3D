@@ -534,7 +534,7 @@ func _crate(pos: Vector3) -> void:
 	var c := _box(pos, Vector3(1, 1, 1), Color(0.9, 0.7, 0.2))
 	crates.append(c)
 
-func _enemy(pos: Vector3, rng: float, axis: String) -> void:
+func _enemy_old(pos: Vector3, rng: float, axis: String) -> void:
 	var en := Node3D.new()
 	en.add_child(_mesh(Vector3(0.8, 0.8, 0.8), Color(0.8, 0.1, 0.1), Vector3.ZERO))
 	en.position = pos
@@ -716,3 +716,38 @@ func _physics_process(delta: float) -> void:
 		_play("win")
 		_burst(player.position + Vector3(0, 1, 0), Color(1, 0.84, 0), 40, 8.0)
 		show_panel("YOU WIN!\nFruits: %d" % fruits, "PLAY AGAIN")
+
+func _ball(par: Node3D, r: float, color: Color, pos: Vector3, sc: Vector3 = Vector3.ONE) -> void:
+	var mi := MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = r
+	sm.height = r * 2.0
+	sm.radial_segments = 12
+	sm.rings = 6
+	sm.material = _mat(color)
+	mi.mesh = sm
+	mi.position = pos
+	mi.scale = sc
+	par.add_child(mi)
+
+func _enemy(pos: Vector3, rng: float, axis: String) -> void:
+	var en := Node3D.new()
+	_ball(en, 0.45, Color(0.8, 0.1, 0.1), Vector3.ZERO, Vector3(1.0, 0.9, 1.0))
+	_ball(en, 0.14, Color.WHITE, Vector3(-0.17, 0.12, 0.34))
+	_ball(en, 0.14, Color.WHITE, Vector3(0.17, 0.12, 0.34))
+	_ball(en, 0.06, Color.BLACK, Vector3(-0.17, 0.12, 0.46))
+	_ball(en, 0.06, Color.BLACK, Vector3(0.17, 0.12, 0.46))
+	_ball(en, 0.1, Color(0.25, 0.03, 0.03), Vector3(-0.2, -0.4, 0.1), Vector3(1.0, 0.6, 1.3))
+	_ball(en, 0.1, Color(0.25, 0.03, 0.03), Vector3(0.2, -0.4, 0.1), Vector3(1.0, 0.6, 1.3))
+	var b1 := _mesh(Vector3(0.24, 0.05, 0.05), Color(0.2, 0.0, 0.0), Vector3(-0.17, 0.32, 0.4))
+	b1.rotation.z = -0.5
+	en.add_child(b1)
+	var b2 := _mesh(Vector3(0.24, 0.05, 0.05), Color(0.2, 0.0, 0.0), Vector3(0.17, 0.32, 0.4))
+	b2.rotation.z = 0.5
+	en.add_child(b2)
+	en.position = pos
+	en.set_meta("c", pos)
+	en.set_meta("rng", rng)
+	en.set_meta("axis", axis)
+	add_child(en)
+	enemies.append(en)
