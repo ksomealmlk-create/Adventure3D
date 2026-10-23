@@ -1,0 +1,39 @@
+name: Convert Judy
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Blender
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y blender
+          blender --version
+
+      - name: Convert Judy.blend to GLB
+        run: |
+          mkdir -p models
+          blender -b tools/Judy.blend --python tools/judy_convert.py -- models/judy.glb models/judy_info.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: judy-result
+          path: |
+            models/judy.glb
+            models/judy_info.txt
+
+      - name: Commit result
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add models/judy.glb models/judy_info.txt
+          git commit -m "Add converted Judy model" || echo "nothing to commit"
+          git push

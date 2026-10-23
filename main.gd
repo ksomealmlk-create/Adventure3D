@@ -130,7 +130,10 @@ func _ready() -> void:
 	sh.height = 1.6
 	cs.shape = sh
 	player.add_child(cs)
-	visual = preload("res://character.gd").new()
+	if ResourceLoader.exists("res://models/judy.glb"):
+		visual = preload("res://judy_character.gd").new()
+	else:
+		visual = preload("res://character.gd").new()
 	player.add_child(visual)
 	add_child(player)
 	player.position = respawn_pos
