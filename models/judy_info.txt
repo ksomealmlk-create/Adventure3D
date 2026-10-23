@@ -1,34 +1,33 @@
-OBJECTS 29 MESHES 25 ARMATURES 2
-TOTAL_TRIS_EST 77405 DECIMATE_RATIO 0.323
-MESH ArmourArm tris~ 3408 mods ['MIRROR', 'MESH_DEFORM', 'ARMATURE'] materials ['ArmArmour', 'VelcroStrap', 'Velcro']
-MESH ArmourChest tris~ 8348 mods ['MESH_DEFORM', 'ARMATURE'] materials ['ChestArmour']
-MESH ArmourFeet tris~ 5164 mods ['MESH_DEFORM'] materials ['FeetArmour', 'FeetArmourLight']
-MESH ArmourKnee tris~ 1056 mods ['MIRROR', 'ARMATURE'] materials ['KneeArmour', 'KneeCap']
+OBJECTS 22 MESHES 19 ARMATURES 1
+apply warn Cornea.L Boolean Error: Modifier is disabled, skipping apply
+
+apply warn Cornea.R Boolean Error: Modifier is disabled, skipping apply
+
+apply warn Eye.L Boolean Error: Modifier is disabled, skipping apply
+
+apply warn Eye.R Boolean Error: Modifier is disabled, skipping apply
+
+TOTAL_TRIS_EST 51473 DECIMATE_RATIO 0.4857
+MESH ArmourArm tris~ 3408 mods ['ARMATURE'] materials ['ArmArmour', 'VelcroStrap', 'Velcro']
+MESH ArmourChest tris~ 8348 mods ['ARMATURE'] materials ['ChestArmour']
+MESH ArmourFeet tris~ 5164 mods [] materials ['FeetArmour', 'FeetArmourLight']
+MESH ArmourKnee tris~ 1056 mods ['ARMATURE'] materials ['KneeArmour', 'KneeCap']
 MESH Badge tris~ 1693 mods ['ARMATURE'] materials ['BadgeGold', 'BadgeBlue', 'BadgeDetailBump']
-MESH BadgeBooleans tris~ 22370 mods ['ARMATURE'] materials ['BadgeGold', 'BadgeBlue']
-MESH Belt tris~ 5948 mods ['MESH_DEFORM'] materials ['Belt', 'Metal']
-MESH BeltBuckle tris~ 1056 mods ['MESH_DEFORM', 'ARMATURE'] materials ['Belt', 'Metal']
-MESH Cornea.L tris~ 1024 mods ['ARMATURE', 'BOOLEAN'] materials ['Cornea']
-MESH Cornea.R tris~ 1024 mods ['ARMATURE', 'BOOLEAN'] materials ['Cornea']
-MESH Eye.L tris~ 1088 mods ['ARMATURE', 'BOOLEAN'] materials ['Eyes', 'Iris', 'Pupil']
-MESH Eye.R tris~ 1088 mods ['ARMATURE', 'BOOLEAN'] materials ['Eyes', 'Iris', 'Pupil']
-MESH EyeBoolean tris~ 12 mods ['ARMATURE'] materials []
-MESH Feet tris~ 1568 mods ['MIRROR', 'ARMATURE'] materials ['Hair', 'Body', 'Claws']
-MESH Ground tris~ 2 mods [] materials ['Ground']
-MESH Hands tris~ 2236 mods ['MIRROR', 'ARMATURE'] materials ['Hair', 'Body', 'Claws']
+MESH Belt tris~ 5948 mods [] materials ['Belt', 'Metal']
+MESH BeltBuckle tris~ 1056 mods ['ARMATURE'] materials ['Belt', 'Metal']
+MESH Cornea.L tris~ 1024 mods ['ARMATURE'] materials ['Cornea']
+MESH Cornea.R tris~ 1024 mods ['ARMATURE'] materials ['Cornea']
+MESH Eye.L tris~ 1088 mods ['ARMATURE'] materials ['Eyes', 'Iris', 'Pupil']
+MESH Eye.R tris~ 1088 mods ['ARMATURE'] materials ['Eyes', 'Iris', 'Pupil']
+MESH Feet tris~ 1568 mods ['ARMATURE'] materials ['Hair', 'Body', 'Claws']
+MESH Hands tris~ 2236 mods ['ARMATURE'] materials ['Hair', 'Body', 'Claws']
 MESH Head tris~ 3674 mods ['ARMATURE', 'ARMATURE', 'VERTEX_WEIGHT_MIX', 'VERTEX_WEIGHT_MIX'] materials ['Hair', 'LooseHairs', 'Eyelashes', 'Body', 'BodySSS', 'Nose', 'EyeBorder', 'Mouth']
-MESH MeshCage tris~ 3548 mods ['ARMATURE'] materials []
 MESH Mouth tris~ 1076 mods ['ARMATURE'] materials ['Teeth', 'Mouth']
 MESH Pouches tris~ 8360 mods ['ARMATURE'] materials ['Camo', 'CamoRim', 'Metal', 'WalkieTalkie', 'WalkieTalkieR', 'RepelantCap', 'RepelantCapCase', 'Repelant']
-MESH Tail tris~ 160 mods ['MIRROR', 'ARMATURE'] materials ['Hair', 'Body']
-MESH UniformMain tris~ 3502 mods ['MESH_DEFORM'] materials ['UniformLight', 'UniformDark']
-MESH WDGT_AIM tris~ 0 mods [] materials []
-MESH WDGT_Camera_Root tris~ 0 mods [] materials []
-MESH WDGT_CTRL tris~ 0 mods [] materials []
-BBOX_MIN [-5.0, -5.0, -0.669] BBOX_MAX [5.0, 5.0, 1.402]
-ARMATURE Camera_Rig bones 6
-BONES Root, AIM, AIM_child, CTRL, FOCUS.001, FOCUS
+MESH Tail tris~ 160 mods ['ARMATURE'] materials ['Hair', 'Body']
+MESH UniformMain tris~ 3502 mods [] materials ['UniformLight', 'UniformDark']
+BBOX_MIN [-0.171, -0.188, -0.0] BBOX_MAX [0.192, 0.154, 1.402]
 ARMATURE Judy_Rig bones 306
 BONES root, IK-foot.L, IK-foot_side_roll.01.L, IK-foot_side_roll.02.L, IK-foot_fore_roll.01.L, IK-foot_fore_roll.02.L, IK-foot_target.L, CON-toes.02.L, CON-toe_parent.L, DEF-t_middle.01.L, DEF-t_middle.02.L, DEF-t_outer.01.L, DEF-t_outer.02.L, DEF-t_inner.01.L, DEF-t_inner.02.L, t_inner.L, t_middle.L, t_outer.L, IK-foot_roll.L, IK-knee_parent.L, IK-knee.L, FK-thigh_hinge.L, FK-thigh.L, FK-shin.L, FK-foot.L, FK-foot_target.L, IK-foot.R, IK-foot_side_roll.01.R, IK-foot_side_roll.02.R, IK-foot_fore_roll.01.R, IK-foot_fore_roll.02.R, IK-foot_target.R, CON-toes.02.R, CON-toe_parent.R, DEF-t_middle.01.R, DEF-t_middle.02.R, DEF-t_outer.01.R, DEF-t_outer.02.R, DEF-t_inner.01.R, DEF-t_inner.02.R, t_inner.R, t_middle.R, t_outer.R, IK-foot_roll.R, IK-knee_parent.R, IK-knee.R, FK-thigh_hinge.R, FK-thigh.R, FK-shin.R, FK-foot.R, FK-foot_target.R, torso, hips, CON-sub_hips, CON-hips.flex_s, CON-hips.flex, CON-hips.reverse, CON-spine.flex_s, CON-spine.flex, CON-chest.flex_s, CON-chest.flex, CON-chest.reverse, CON-spine.reverse, chest, CON-sub_chest, CON-par_spine, spine, CON-sub_spine, DEF-hips, DEF-spine, DEF-chest, DEF-neck, DEF-head, DEF-ear.01.L, DEF-ear.02.L, DEF-ear.03.L, DEF-ear.04.L, DEF-eye.L, DEF-iris.L, DEF-ear.01.R, DEF-ear.02.R, DEF-ear.03.R, DEF-ear.04.R, CON-eyes_follow, DEF-eye.R, DEF-iris.R, DEF-jaw, tongue.03, tongue.02, tongue.01, DEF-tooth_b.01, DEF-tooth_b.02.L, DEF-tooth_b.03.L, DEF-tooth_b.04.L, DEF-tooth_b.02.R, DEF-tooth_b.03.R, DEF-tooth_b.04.R, DEF-tongue.01, DEF-tongue.02, DEF-tongue.03, DEF-tooth_t.01, DEF-tooth_t.02.L, DEF-tooth_t.03.L, DEF-tooth_t.04.L, DEF-tooth_t.05.L, DEF-tooth_t.02.R, DEF-tooth_t.03.R, DEF-tooth_t.04.R, DEF-tooth_t.05.R, DEF-eyelid_u.01.L, DEF-eyelid_u.02.L, DEF-eyelid_u.03.L, eyelid_u.01.L, eyelid_u.02.L, eyelid_u.03.L, CON-eyelid_u.02.L, CON-eyelid_u.01.L, CON-eyelid_u.03.L, DEF-eyelid_l.03.L, DEF-eyelid_l.02.L, DEF-eyelid_l.01.L, DEF-eyelid_u.01.R, DEF-eyelid_u.02.R, DEF-eyelid_u.03.R, eyelid_u.01.R, eyelid_u.02.R, eyelid_u.03.R, CON-eyelid_u.02.R, CON-eyelid_u.01.R, CON-eyelid_u.03.R, DEF-eyelid_l.03.R, DEF-eyelid_l.02.R, DEF-eyelid_l.01.R, DEF-nose, eyebrow.05.L, DEF-eyebrow.04.L, DEF-eyebrow.03.L, DEF-eyebrow.02.L, DEF-eyebrow.01.L, DEF-eye_crevice.03.L, DEF-eye_crevice.02.L, DEF-eye_crevice.01.L, DEF-eye_crevice.03.R, DEF-eye_crevice.02.R, DEF-eye_crevice.01.R, eyebrow.02.L, eyebrow.01.L, eyebrow.03.L, eyebrow.04.L, eyebrow.05.R, DEF-eyebrow.04.R, DEF-eyebrow.03.R, DEF-eyebrow.02.R, DEF-eyebrow.01.R, eyebrow.02.R, eyebrow.01.R, eyebrow.03.R, eyebrow.04.R, eye_crevice.01.L, eye_crevice.02.L, eye_crevice.03.L, eye_crevice.01.R, eye_crevice.02.R, eye_crevice.03.R, upper-lip, lip-top.L, lip-top.R, lower-lip, lip-corner.L, lip-corner.R, cheek.01.L, eyelid_l.01.L, eyelid_l.02.L, eyelid_l.03.L, cheek.01.R, eyelid_l.01.R, eyelid_l.02.R, eyelid_l.03.R, cheek.02.L, cheek.02.R, CON-ear.01.L, CON-ear.01.R, DEF-shoulder.L, DEF-upper_arm.L, DEF-forearm.L, DEF-hand.L, DEF-f_index.01.L, DEF-f_index.02.L, DEF-f_index.03.L, f_
 ACTIONS ['Camera_RigAction', 'PoseLib']
-EXPORT_OK models/judy.glb 2389324 bytes
+EXPORT_OK models/judy.glb 2047680 bytes
