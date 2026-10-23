@@ -42,12 +42,18 @@ jobs:
           unzip -q Godot_v${V}_export_templates.tpz 'templates/android*' 'templates/version.txt' -d tpl
           mv tpl/templates/* ~/gd/templates/
 
+      - name: Keystore cache
+        uses: actions/cache@v4
+        with:
+          path: ~/debug.keystore
+          key: debug-keystore-v1
+
       - name: Setup Godot
         run: |
           sudo cp ~/gd/godot /usr/local/bin/godot
           mkdir -p ~/.local/share/godot/export_templates/4.3.stable
           cp -r ~/gd/templates/* ~/.local/share/godot/export_templates/4.3.stable/
-          keytool -genkeypair -keystore $HOME/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          [ -f $HOME/debug.keystore ] || keytool -genkeypair -keystore $HOME/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           mkdir -p ~/.config/godot
           cat > ~/.config/godot/editor_settings-4.3.tres <<EOF2
           [gd_resource type="EditorSettings" format=3]
