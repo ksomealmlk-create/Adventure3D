@@ -106,9 +106,7 @@ func _ready() -> void:
 	sh.height = 1.6
 	cs.shape = sh
 	player.add_child(cs)
-	visual = Node3D.new()
-	visual.add_child(_mesh(Vector3(0.8, 1.6, 0.8), Color(1, 0.5, 0), Vector3.ZERO))
-	visual.add_child(_mesh(Vector3(0.3, 0.3, 0.3), Color(1, 1, 0), Vector3(0, 0.3, -0.5)))
+	visual = preload("res://character.gd").new()
 	player.add_child(visual)
 	add_child(player)
 	player.position = respawn_pos
