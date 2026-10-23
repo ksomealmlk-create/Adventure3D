@@ -31,6 +31,8 @@ var enemies: Array = []
 var cps: Array = []
 var cp_mats: Array = []
 var cp_done: Array = []
+var movers: Array = []
+var hazards: Array = []
 
 func _ready() -> void:
 	var env := WorldEnvironment.new()
@@ -47,25 +49,7 @@ func _ready() -> void:
 	sun.rotation_degrees = Vector3(-50, 30, 0)
 	add_child(sun)
 
-	_box(Vector3(0, -0.5, 0), Vector3(8, 1, 16), Color(0.3, 0.7, 0.3))
-	_box(Vector3(0, -0.5, -14), Vector3(4, 1, 4), Color(0.6, 0.4, 0.2))
-	_box(Vector3(0, 0.5, -20), Vector3(4, 1, 4), Color(0.6, 0.4, 0.2))
-	_box(Vector3(3, 1.5, -25), Vector3(4, 1, 4), Color(0.8, 0.3, 0.3))
-	_box(Vector3(0, -0.5, -34), Vector3(3, 1, 10), Color(0.5, 0.35, 0.2))
-	_box(Vector3(0, -0.5, -46), Vector3(8, 1, 8), Color(1, 0.84, 0))
-
-	_crate(Vector3(-2, 0.5, -3))
-	_crate(Vector3(0, 0.5, -3))
-	_crate(Vector3(2, 0.5, -3))
-	_crate(Vector3(0, 0.5, -14))
-	_crate(Vector3(0, 1.5, -20))
-	_crate(Vector3(3, 2.5, -25))
-
-	_enemy(Vector3(0, 0.4, -7), 3.0)
-	_enemy(Vector3(0, 0.4, -34), 1.0)
-
-	_checkpoint(Vector3(0, 1.8, -20), Vector3(1.5, 2.0, -20))
-	_checkpoint(Vector3(0, 0.8, -33), Vector3(1.2, 1.0, -33))
+	_build_level()
 
 	player = CharacterBody3D.new()
 	var cs := CollisionShape3D.new()
@@ -128,6 +112,70 @@ func _ready() -> void:
 	else:
 		show_panel("ADVENTURE 3D", "START")
 
+func _build_level() -> void:
+	var green := Color(0.3, 0.7, 0.3)
+	var brown := Color(0.6, 0.4, 0.2)
+	var wood := Color(0.5, 0.35, 0.2)
+	var red := Color(0.8, 0.3, 0.3)
+	var gold := Color(1, 0.84, 0)
+
+	# 1) Start area
+	_plat(0, 0.0, 8, -12, 8, green)
+	_crate(Vector3(-2, 0.5, -3))
+	_crate(Vector3(0, 0.5, -3))
+	_crate(Vector3(2, 0.5, -3))
+	_enemy(Vector3(0, 0.4, -7), 3.0, "x")
+
+	# 2) Jumping platforms
+	_plat(0, 0.0, -15, -18, 3.5, brown)
+	_plat(0, 0.8, -21, -24, 3.5, brown)
+	_plat(0, 1.6, -27, -30, 3.5, red)
+	_crate(Vector3(0, 1.3, -22.5))
+	_crate(Vector3(0, 2.1, -28.5))
+
+	# 3) Bridge with an enemy
+	_plat(0, 1.6, -30, -46, 1.6, wood)
+	_checkpoint(Vector3(0, 2.1, -31), Vector3(0.55, 2.6, -31))
+	_enemy(Vector3(0, 2.0, -38), 4.0, "z")
+
+	# 4) Island 1
+	_plat(0, 1.6, -46, -54, 8, green)
+	_crate(Vector3(-2, 2.1, -49))
+	_crate(Vector3(2, 2.1, -49))
+	_crate(Vector3(0, 2.1, -52))
+	_checkpoint(Vector3(0, 2.1, -50), Vector3(3, 2.6, -50))
+	_enemy(Vector3(0, 2.0, -48), 3.0, "x")
+
+	# 5) Moving platform over a gap
+	var mp := _plat(0, 1.6, -56.5, -59.5, 3.5, Color(0.2, 0.5, 0.9))
+	movers.append({"node": mp, "base": mp.position, "amp": 2.0, "w": 3.5, "len": 3.0})
+
+	# 6) Island 2 and the trap path
+	_plat(0, 1.6, -66, -72, 8, green)
+	_crate(Vector3(-2, 2.1, -70))
+	_crate(Vector3(2, 2.1, -70))
+	_checkpoint(Vector3(0, 2.1, -68), Vector3(3, 2.6, -68))
+	_enemy(Vector3(0, 2.0, -69), 3.0, "x")
+	_plat(0, 1.6, -72, -90, 3, brown)
+	_hazard(Vector3(0, 1.95, -76))
+	_hazard(Vector3(0, 1.95, -81))
+	_hazard(Vector3(0, 1.95, -86))
+
+	# 7) Final climb
+	_plat(0, 2.4, -93, -96, 3, brown)
+	_plat(0, 3.2, -99, -102, 3, brown)
+	_checkpoint(Vector3(0, 3.7, -100.5), Vector3(1.0, 4.2, -100.5))
+	_plat(0, 4.0, -105, -108, 3, brown)
+	_plat(0, 4.0, -111, -119, 8, gold)
+
+func _plat(cx: float, top: float, z0: float, z1: float, w: float, color: Color) -> StaticBody3D:
+	var ln := absf(z1 - z0)
+	return _box(Vector3(cx, top - 0.5, (z0 + z1) * 0.5), Vector3(w, 1, ln), color)
+
+func _hazard(pos: Vector3) -> void:
+	add_child(_mesh(Vector3(3, 0.7, 0.8), Color(0.9, 0.1, 0.1), pos))
+	hazards.append({"pos": pos, "half": Vector3(1.5, 0.35, 0.4)})
+
 func show_panel(title: String, btn: String) -> void:
 	title_label.text = title
 	button.text = btn
@@ -168,12 +216,13 @@ func _crate(pos: Vector3) -> void:
 	var c := _box(pos, Vector3(1, 1, 1), Color(0.9, 0.7, 0.2))
 	crates.append(c)
 
-func _enemy(pos: Vector3, rng: float) -> void:
+func _enemy(pos: Vector3, rng: float, axis: String) -> void:
 	var en := Node3D.new()
 	en.add_child(_mesh(Vector3(0.8, 0.8, 0.8), Color(0.8, 0.1, 0.1), Vector3.ZERO))
 	en.position = pos
-	en.set_meta("cx", pos.x)
+	en.set_meta("c", pos)
 	en.set_meta("rng", rng)
+	en.set_meta("axis", axis)
 	add_child(en)
 	enemies.append(en)
 
@@ -258,10 +307,25 @@ func _physics_process(delta: float) -> void:
 		if spin_t <= 0.0:
 			visual.rotation.y = 0.0
 
+	for m in movers:
+		var node: StaticBody3D = m["node"]
+		var old := node.position
+		var base: Vector3 = m["base"]
+		var new_pos := base + Vector3(0, 0, sin(t * 1.2) * float(m["amp"]))
+		var on_it: bool = player.is_on_floor() and absf(player.position.x - old.x) < float(m["w"]) * 0.5 + 0.2 and absf(player.position.z - old.z) < float(m["len"]) * 0.5 + 0.2 and absf(player.position.y - (old.y + 1.3)) < 0.5
+		node.position = new_pos
+		if on_it:
+			player.position += new_pos - old
+
 	player.move_and_slide()
 
 	for en in enemies.duplicate():
-		en.position.x = float(en.get_meta("cx")) + sin(t * 2.0) * float(en.get_meta("rng"))
+		var c: Vector3 = en.get_meta("c")
+		var off := sin(t * 2.0) * float(en.get_meta("rng"))
+		if en.get_meta("axis") == "x":
+			en.position = Vector3(c.x + off, c.y, c.z)
+		else:
+			en.position = Vector3(c.x, c.y, c.z + off)
 		if player.position.distance_to(en.position) < 1.0:
 			if player.velocity.y < 0.0 and player.position.y > en.position.y + 0.6:
 				enemies.erase(en)
@@ -271,6 +335,15 @@ func _physics_process(delta: float) -> void:
 				_hurt()
 				if state != "play":
 					return
+
+	for h in hazards:
+		var hp: Vector3 = h["pos"]
+		var hh: Vector3 = h["half"]
+		if absf(player.position.x - hp.x) < hh.x + 0.4 and absf(player.position.z - hp.z) < hh.z + 0.4 and player.position.y - 0.8 < hp.y + hh.y:
+			_hurt()
+			if state != "play":
+				return
+			break
 
 	for i in range(cps.size()):
 		if not cp_done[i] and player.position.distance_to(cps[i]) < 2.0:
@@ -282,7 +355,7 @@ func _physics_process(delta: float) -> void:
 		_hurt()
 		if state != "play":
 			return
-	if not won and player.position.z < -43.0 and player.position.y > -1.0:
+	if not won and player.position.z < -112.0 and player.position.y > 3.0:
 		won = true
 		state = "win"
 		show_panel("YOU WIN!\nFruits: %d" % fruits, "PLAY AGAIN")
