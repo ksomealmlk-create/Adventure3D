@@ -30,6 +30,7 @@ func _ready() -> void:
 	inst.rotation.y = YAW
 	_fit(inst)
 	_pose_arms(inst)
+	_setup_legs(inst)
 
 func _fit(inst: Node3D) -> void:
 	var have := false
@@ -100,6 +101,11 @@ func _process(delta: float) -> void:
 			body.position.y = absf(sin(anim_t * 6.0)) * 0.5
 			body.rotation.y = anim_t * 3.0
 
+	var swing := 0.0
+	if anim == "walk" or anim == "run":
+		swing = sin(t * (16.0 if anim == "run" else 10.0)) * (0.7 if anim == "run" else 0.45)
+	_swing_legs(swing)
+
 const ARM_DOWN := 1.2
 
 func _pose_arms(inst: Node3D) -> void:
@@ -125,3 +131,33 @@ func _pose_arms(inst: Node3D) -> void:
 		sk.set_bone_pose_rotation(i, nb.get_rotation_quaternion())
 		n += 1
 	print("Judy arms posed: ", n)
+
+var skel: Skeleton3D
+var legs := []
+
+func _setup_legs(inst: Node3D) -> void:
+	var found := inst.find_children("*", "Skeleton3D", true, false)
+	if found.is_empty():
+		return
+	skel = found[0] as Skeleton3D
+	for i in skel.get_bone_count():
+		var nm := skel.get_bone_name(i).to_lower()
+		if not (nm.begins_with("def") and nm.contains("thigh")):
+			continue
+		var par := skel.get_bone_parent(i)
+		var pg := Basis.IDENTITY
+		if par >= 0:
+			pg = skel.get_bone_global_rest(par).basis
+		var side := 1.0 if skel.get_bone_global_rest(i).origin.x > 0.0 else -1.0
+		legs.append({"i": i, "pg": pg, "lb": skel.get_bone_rest(i).basis, "side": side})
+	print("Judy legs: ", legs.size())
+
+func _swing_legs(angle: float) -> void:
+	if skel == null:
+		return
+	for d in legs:
+		var pg: Basis = d["pg"]
+		var lb: Basis = d["lb"]
+		var rot := Basis(Vector3(1, 0, 0), angle * float(d["side"]))
+		var nb: Basis = (pg.inverse() * rot * pg * lb).orthonormalized()
+		skel.set_bone_pose_rotation(int(d["i"]), nb.get_rotation_quaternion())

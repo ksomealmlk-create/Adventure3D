@@ -11,6 +11,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache apt packages
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: blender python3-numpy
+          version: 1.0
+
       - name: Install Blender
         run: |
           sudo apt-get update

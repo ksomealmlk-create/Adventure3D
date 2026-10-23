@@ -21,7 +21,7 @@ root = scene.collection
 # 1) remove rig widgets, cameras, lights
 for ob in list(bpy.data.objects):
     n = ob.name.lower()
-    junk = ("wdgt", "wgt", "ground", "badgebooleans", "eyeboolean", "camera_rig")
+    junk = ("wdgt", "wgt", "ground", "badgebooleans", "camera_rig")
     if n.startswith(junk) or ob.type in ("CAMERA", "LIGHT"):
         bpy.data.objects.remove(ob, do_unlink=True)
 
@@ -74,9 +74,10 @@ for o in meshes:
                     o.modifiers.remove(m)
                 except Exception:
                     pass
-cage = bpy.data.objects.get("MeshCage")
-if cage:
-    bpy.data.objects.remove(cage, do_unlink=True)
+for _n in ("MeshCage", "EyeBoolean"):
+    _o = bpy.data.objects.get(_n)
+    if _o:
+        bpy.data.objects.remove(_o, do_unlink=True)
 meshes = [o for o in bpy.data.objects if o.type == "MESH"]
 total = sum(est_tris(o) for o in meshes)
 ratio = min(1.0, TARGET_TRIS / max(1, total))
