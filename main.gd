@@ -20,6 +20,17 @@ var pause_btn: Button
 var quality_btn: Button
 var sun_light: DirectionalLight3D
 var mat_cache := {}
+var leaves: CPUParticles3D
+var cam_off := Vector3(0, 5, 8)
+var cam_zones := [
+	[12.0, -13.0, Vector3(0, 5.0, 8.0)],
+	[-13.0, -30.0, Vector3(0, 6.5, 9.5)],
+	[-30.0, -47.0, Vector3(0, 3.6, 6.0)],
+	[-47.0, -66.0, Vector3(0, 6.0, 10.5)],
+	[-66.0, -72.0, Vector3(0, 5.0, 8.0)],
+	[-72.0, -92.0, Vector3(0, 2.2, 5.5)],
+	[-92.0, -130.0, Vector3(0, 7.0, 10.0)],
+]
 var was_floor := true
 var dust_t := 0.0
 var stick_base: Panel
@@ -58,7 +69,7 @@ func _ready() -> void:
 	sky_mat.sky_top_color = Color(0.25, 0.5, 0.9)
 	sky_mat.sky_horizon_color = Color(0.7, 0.85, 1.0)
 	sky_mat.ground_horizon_color = Color(0.7, 0.85, 1.0)
-	sky_mat.ground_bottom_color = Color(0.4, 0.6, 0.5)
+	sky_mat.ground_bottom_color = Color(0.18, 0.4, 0.2)
 	sky.sky_material = sky_mat
 	e.background_mode = Environment.BG_SKY
 	e.sky = sky
@@ -70,13 +81,14 @@ func _ready() -> void:
 	e.adjustment_contrast = 1.05
 	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	e.ambient_light_color = Color(1, 1, 1)
-	e.ambient_light_energy = 0.5
+	e.ambient_light_energy = 0.38
 	env.environment = e
 	add_child(env)
 
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-50, 30, 0)
-	sun.light_energy = 1.1
+	sun.light_energy = 1.0
+	sun.light_color = Color(1.0, 0.96, 0.88)
 	sun.shadow_enabled = fx_on
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 	sun.directional_shadow_max_distance = 45.0
@@ -85,6 +97,7 @@ func _ready() -> void:
 
 	_build_sounds()
 	_build_level()
+	_build_forest()
 
 	player = CharacterBody3D.new()
 	var cs := CollisionShape3D.new()
@@ -103,6 +116,24 @@ func _ready() -> void:
 	cam = Camera3D.new()
 	add_child(cam)
 	cam.position = respawn_pos + Vector3(0, 5, 8)
+	leaves = CPUParticles3D.new()
+	leaves.amount = 40
+	leaves.lifetime = 6.0
+	leaves.preprocess = 3.0
+	leaves.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	leaves.emission_box_extents = Vector3(14, 5, 14)
+	leaves.direction = Vector3(0.3, -1, 0.2)
+	leaves.spread = 25.0
+	leaves.initial_velocity_min = 0.3
+	leaves.initial_velocity_max = 0.9
+	leaves.gravity = Vector3(0, -0.4, 0)
+	var lm := BoxMesh.new()
+	lm.size = Vector3(0.14, 0.02, 0.1)
+	lm.material = _mat(Color(0.75, 0.85, 0.3))
+	leaves.mesh = lm
+	leaves.local_coords = false
+	leaves.emitting = fx_on
+	cam.add_child(leaves)
 
 	_build_ui()
 
@@ -265,6 +296,7 @@ func _build_level() -> void:
 	_crate(Vector3(0, 2.1, -28.5))
 
 	_plat(0, 1.6, -30, -46, 1.6, wood)
+	_bridge(-30.0, -46.0, 1.6, 0.8)
 	_checkpoint(Vector3(0, 2.1, -31), Vector3(0.55, 2.6, -31))
 	_enemy(Vector3(0, 2.0, -38), 4.0, "z")
 
@@ -284,6 +316,9 @@ func _build_level() -> void:
 	_checkpoint(Vector3(0, 2.1, -68), Vector3(3, 2.6, -68))
 	_enemy(Vector3(0, 2.0, -69), 3.0, "x")
 	_plat(0, 1.6, -72, -90, 3, brown)
+	for az in [-75.0, -79.0, -83.0, -87.0]:
+		var azf: float = az
+		_arch(azf, 1.6, 1.75)
 	_hazard(Vector3(0, 1.95, -76))
 	_hazard(Vector3(0, 1.95, -81))
 	_hazard(Vector3(0, 1.95, -86))
@@ -296,10 +331,19 @@ func _build_level() -> void:
 
 func _plat(cx: float, top: float, z0: float, z1: float, w: float, color: Color) -> StaticBody3D:
 	var ln := absf(z1 - z0)
-	return _box(Vector3(cx, top - 0.5, (z0 + z1) * 0.5), Vector3(w, 1, ln), color)
+	var body := _box(Vector3(cx, top - 0.5, (z0 + z1) * 0.5), Vector3(w, 1, ln), color)
+	_add_pillars(body, w, ln, top)
+	return body
 
 func _hazard(pos: Vector3) -> void:
-	add_child(_mesh(Vector3(3, 0.7, 0.8), Color(0.9, 0.1, 0.1), pos))
+	var hm := _mesh(Vector3(3, 0.7, 0.8), Color(0.9, 0.1, 0.1), pos)
+	var em := StandardMaterial3D.new()
+	em.albedo_color = Color(0.9, 0.1, 0.1)
+	em.emission_enabled = true
+	em.emission = Color(1.0, 0.1, 0.05)
+	em.emission_energy_multiplier = 0.8
+	hm.material_override = em
+	add_child(hm)
 	hazards.append({"pos": pos, "half": Vector3(1.5, 0.35, 0.4)})
 
 func show_panel(title: String, btn: String) -> void:
@@ -325,6 +369,107 @@ func _on_pause() -> void:
 		stick_base.hide()
 		stick_knob.hide()
 		show_panel("PAUSED", "RESUME")
+
+func _cam_zone(z: float) -> Vector3:
+	for zone in cam_zones:
+		var a: float = zone[0]
+		var b: float = zone[1]
+		if z <= a and z > b:
+			var off: Vector3 = zone[2]
+			return off
+	return Vector3(0, 6, 9)
+
+func _add_pillars(body: Node3D, w: float, ln: float, top: float) -> void:
+	var h := top + 9.0
+	var n := maxi(1, int(ln / 10.0))
+	var pw := minf(w * 0.4, 1.2)
+	for i in range(n):
+		var z := 0.0
+		if n > 1:
+			z = lerpf(-ln * 0.5 + 1.0, ln * 0.5 - 1.0, float(i) / float(n - 1))
+		body.add_child(_mesh(Vector3(pw, h, pw), Color(0.45, 0.32, 0.2), Vector3(0, -0.5 - h * 0.5, z)))
+
+func _bridge(z0: float, z1: float, top: float, half: float) -> void:
+	var wood_c := Color(0.35, 0.22, 0.12)
+	var ln := absf(z1 - z0)
+	var zc := (z0 + z1) * 0.5
+	var n := maxi(1, int(ln / 4.0))
+	var sides := [-1.0, 1.0]
+	for sx in sides:
+		var xs: float = sx
+		var rx := xs * (half + 0.1)
+		add_child(_mesh(Vector3(0.08, 0.08, ln), wood_c, Vector3(rx, top + 0.75, zc)))
+		add_child(_mesh(Vector3(0.08, 0.08, ln), wood_c, Vector3(rx, top + 0.4, zc)))
+		for i in range(n + 1):
+			var pz := z0 - float(i) * (ln / float(n))
+			add_child(_mesh(Vector3(0.16, 0.9, 0.16), wood_c, Vector3(rx, top + 0.45, pz)))
+
+func _arch(z: float, top: float, half: float) -> void:
+	var stone := Color(0.55, 0.55, 0.6)
+	add_child(_mesh(Vector3(0.35, 3.4, 0.35), stone, Vector3(-half, top + 1.7, z)))
+	add_child(_mesh(Vector3(0.35, 3.4, 0.35), stone, Vector3(half, top + 1.7, z)))
+	add_child(_mesh(Vector3(half * 2.0 + 0.7, 0.4, 0.5), stone, Vector3(0, top + 3.5, z)))
+
+func _build_forest() -> void:
+	var ground := MeshInstance3D.new()
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(500, 500)
+	pm.material = _mat(Color(0.18, 0.4, 0.2))
+	ground.mesh = pm
+	ground.position = Vector3(0, -10, -60)
+	ground.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(ground)
+
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 12345
+	var trunk := CylinderMesh.new()
+	trunk.top_radius = 0.3
+	trunk.bottom_radius = 0.4
+	trunk.height = 1.0
+	trunk.radial_segments = 6
+	trunk.rings = 1
+	trunk.material = _mat(Color(0.4, 0.28, 0.18))
+	var crown := CylinderMesh.new()
+	crown.top_radius = 0.0
+	crown.bottom_radius = 1.0
+	crown.height = 1.0
+	crown.radial_segments = 7
+	crown.rings = 1
+	var cmat := StandardMaterial3D.new()
+	cmat.vertex_color_use_as_albedo = true
+	cmat.roughness = 0.9
+	crown.material = cmat
+	var count := 160
+	var mm_t := MultiMesh.new()
+	mm_t.transform_format = MultiMesh.TRANSFORM_3D
+	mm_t.mesh = trunk
+	mm_t.instance_count = count
+	var mm_c := MultiMesh.new()
+	mm_c.transform_format = MultiMesh.TRANSFORM_3D
+	mm_c.use_colors = true
+	mm_c.mesh = crown
+	mm_c.instance_count = count
+	for i in range(count):
+		var side := -1.0 if rng.randf() < 0.5 else 1.0
+		var x := side * rng.randf_range(7.5, 38.0)
+		var z := rng.randf_range(25.0, -150.0)
+		var h := rng.randf_range(11.0, 20.0)
+		var th := h * 0.5
+		var tw := 1.0 + h * 0.02
+		mm_t.set_instance_transform(i, Transform3D(Basis.IDENTITY.scaled(Vector3(tw, th, tw)), Vector3(x, -10.0 + th * 0.5, z)))
+		var ch := h * 0.6
+		var cr := 1.4 + h * 0.1
+		mm_c.set_instance_transform(i, Transform3D(Basis.IDENTITY.scaled(Vector3(cr, ch, cr)), Vector3(x, -10.0 + h * 0.4 + ch * 0.5, z)))
+		var g := rng.randf()
+		mm_c.set_instance_color(i, Color(0.08 + 0.1 * g, 0.32 + 0.2 * g, 0.12 + 0.1 * g))
+	var mi_t := MultiMeshInstance3D.new()
+	mi_t.multimesh = mm_t
+	mi_t.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi_t)
+	var mi_c := MultiMeshInstance3D.new()
+	mi_c.multimesh = mm_c
+	mi_c.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi_c)
 
 func _mat(c: Color) -> StandardMaterial3D:
 	var k := c.to_html()
@@ -361,6 +506,7 @@ func _burst(pos: Vector3, color: Color, amount: int, speed: float) -> void:
 func _on_quality() -> void:
 	fx_on = not fx_on
 	sun_light.shadow_enabled = fx_on
+	leaves.emitting = fx_on
 	quality_btn.text = "HD" if fx_on else "LD"
 
 func _mesh(size: Vector3, color: Color, pos: Vector3) -> MeshInstance3D:
@@ -456,9 +602,11 @@ func _hurt() -> void:
 	player.velocity = Vector3.ZERO
 
 func _physics_process(delta: float) -> void:
-	var cam_target := player.global_position + Vector3(0, 5, 8)
-	cam.global_position = cam.global_position.lerp(cam_target, minf(1.0, delta * 8.0))
-	cam.look_at(player.global_position + Vector3(0, 0.5, 0))
+	cam_off = cam_off.lerp(_cam_zone(player.position.z), minf(1.0, delta * 2.5))
+	var cam_target := player.global_position + cam_off
+	cam_target.x = player.global_position.x * 0.8
+	cam.global_position = cam.global_position.lerp(cam_target, minf(1.0, delta * 6.0))
+	cam.look_at(player.global_position + Vector3(0, 0.5, -2.0))
 	var hspeed := Vector2(player.velocity.x, player.velocity.z).length()
 	cam.fov = lerpf(cam.fov, 70.0 + hspeed * 1.2, minf(1.0, delta * 4.0))
 	var txt := "Fruits: %d    Lives: %d" % [fruits, lives]
@@ -558,7 +706,7 @@ func _physics_process(delta: float) -> void:
 			_play("check")
 			_burst(cps[i], Color(0.2, 1.0, 0.2), 16, 6.0)
 
-	if player.position.y < -15.0:
+	if player.position.y < -9.0:
 		_hurt()
 		if state != "play":
 			return
