@@ -31,6 +31,7 @@ func _ready() -> void:
 	_fit(inst)
 	_pose_arms(inst)
 	_setup_legs(inst)
+	_setup_arms(inst)
 
 func _fit(inst: Node3D) -> void:
 	var have := false
@@ -81,7 +82,7 @@ func _process(delta: float) -> void:
 			var s := sin(ph)
 			body.position.y = absf(s) * (0.12 if is_run else 0.07)
 			body.rotation.z = s * (0.1 if is_run else 0.06)
-			body.rotation.x = -0.2 if is_run else -0.08
+			body.rotation.x = -0.3 if is_run else -0.1
 		"jump":
 			body.scale = Vector3(0.93, 1.1, 0.93)
 			body.rotation.x = -0.1
@@ -103,8 +104,9 @@ func _process(delta: float) -> void:
 
 	var swing := 0.0
 	if anim == "walk" or anim == "run":
-		swing = sin(t * (16.0 if anim == "run" else 10.0)) * (0.7 if anim == "run" else 0.45)
+		swing = sin(t * (16.0 if anim == "run" else 10.0)) * (1.1 if anim == "run" else 0.6)
 	_swing_legs(swing)
+	_swing_arms(swing)
 
 const ARM_DOWN := 1.2
 
@@ -161,3 +163,52 @@ func _swing_legs(angle: float) -> void:
 		var rot := Basis(Vector3(1, 0, 0), angle * float(d["side"]))
 		var nb: Basis = (pg.inverse() * rot * pg * lb).orthonormalized()
 		skel.set_bone_pose_rotation(int(d["i"]), nb.get_rotation_quaternion())
+\n
+var limbs := []
+
+func _setup_arms(inst: Node3D) -> void:
+    if skel == null:
+        return
+    for i in skel.get_bone_count():
+        var nm := skel.get_bone_name(i).to_lower()
+        if not nm.begins_with("def"):
+            continue
+        var par := skel.get_bone_parent(i)
+        if par < 0:
+            continue
+        var side := 1.0 if skel.get_bone_global_rest(i).origin.x > 0.0 else -1.0
+        var lb := skel.get_bone_rest(i).basis
+        if nm.contains("upper_arm"):
+            limbs.append({"i": i, "par": par, "pg": skel.get_bone_global_rest(par).basis, "lb": lb, "side": side, "kind": 0})
+        elif nm.contains("forearm"):
+            limbs.append({"i": i, "par": par, "pg": Basis.IDENTITY, "lb": lb, "side": side, "kind": 1})
+        elif nm.contains("shin"):
+            limbs.append({"i": i, "par": par, "pg": Basis.IDENTITY, "lb": lb, "side": side, "kind": 2})
+    print("Judy limbs: ", limbs.size())
+
+func _swing_arms(swing: float) -> void:
+    if skel == null:
+        return
+    var run := anim == "run"
+    var moving := run or anim == "walk"
+    var elbow := 1.3 if run else (0.35 if moving else 0.12)
+    var arm_swing := swing * 0.95
+    for d in limbs:
+        var side: float = d["side"]
+        var lb: Basis = d["lb"]
+        var kind: int = d["kind"]
+        var pb: Basis = d["pg"]
+        var rot := Basis.IDENTITY
+        if kind == 0:
+            rot = Basis(Vector3(1, 0, 0), -arm_swing * side) * Basis(Vector3(0, 0, 1), -side * ARM_DOWN)
+        elif kind == 1:
+            pb = skel.get_bone_global_pose(int(d["par"])).basis
+            rot = Basis(Vector3(1, 0, 0), -elbow)
+        else:
+            pb = skel.get_bone_global_pose(int(d["par"])).basis
+            var flex := 0.0
+            if moving:
+                flex = maxf(0.0, -swing * side) * (0.9 if run else 0.5) + (0.15 if run else 0.0)
+            rot = Basis(Vector3(1, 0, 0), flex)
+        var nb: Basis = (pb.inverse() * rot * pb * lb).orthonormalized()
+        skel.set_bone_pose_rotation(int(d["i"]), nb.get_rotation_quaternion())
