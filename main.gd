@@ -1,5 +1,7 @@
 extends Node3D
 
+static var skip_menu := false
+
 const SPEED := 7.0
 const JUMP_V := 10.0
 const GRAV := 28.0
@@ -9,6 +11,10 @@ var player: CharacterBody3D
 var visual: Node3D
 var cam: Camera3D
 var label: Label
+var panel: ColorRect
+var title_label: Label
+var button: Button
+var state := "menu"
 var move_vec := Vector2.ZERO
 var touch_id := -1
 var touch_start := Vector2.ZERO
@@ -19,8 +25,12 @@ var won := false
 var fruits := 0
 var lives := 3
 var t := 0.0
+var respawn_pos := Vector3(0, 1.5, 0)
 var crates: Array = []
 var enemies: Array = []
+var cps: Array = []
+var cp_mats: Array = []
+var cp_done: Array = []
 
 func _ready() -> void:
 	var env := WorldEnvironment.new()
@@ -54,6 +64,9 @@ func _ready() -> void:
 	_enemy(Vector3(0, 0.4, -7), 3.0)
 	_enemy(Vector3(0, 0.4, -34), 1.0)
 
+	_checkpoint(Vector3(0, 1.8, -20), Vector3(1.5, 2.0, -20))
+	_checkpoint(Vector3(0, 0.8, -33), Vector3(1.2, 1.0, -33))
+
 	player = CharacterBody3D.new()
 	var cs := CollisionShape3D.new()
 	var sh := CapsuleShape3D.new()
@@ -66,7 +79,7 @@ func _ready() -> void:
 	visual.add_child(_mesh(Vector3(0.3, 0.3, 0.3), Color(1, 1, 0), Vector3(0, 0.3, -0.5)))
 	player.add_child(visual)
 	add_child(player)
-	player.position = Vector3(0, 1.5, 0)
+	player.position = respawn_pos
 
 	cam = Camera3D.new()
 	add_child(cam)
@@ -87,7 +100,46 @@ func _ready() -> void:
 	l2.position = Vector2(sz.x * 0.82, sz.y * 0.8)
 	l2.add_theme_font_size_override("font_size", 40)
 	layer.add_child(l2)
+
+	panel = ColorRect.new()
+	panel.color = Color(0, 0, 0, 0.55)
+	panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(panel)
+	var cc := CenterContainer.new()
+	cc.set_anchors_preset(Control.PRESET_FULL_RECT)
+	panel.add_child(cc)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 40)
+	cc.add_child(vb)
+	title_label = Label.new()
+	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_label.add_theme_font_size_override("font_size", 72)
+	vb.add_child(title_label)
+	button = Button.new()
+	button.custom_minimum_size = Vector2(360, 110)
+	button.add_theme_font_size_override("font_size", 48)
+	button.pressed.connect(_on_button)
+	vb.add_child(button)
 	add_child(layer)
+
+	if skip_menu:
+		state = "play"
+		panel.hide()
+	else:
+		show_panel("ADVENTURE 3D", "START")
+
+func show_panel(title: String, btn: String) -> void:
+	title_label.text = title
+	button.text = btn
+	panel.show()
+
+func _on_button() -> void:
+	if state == "menu":
+		state = "play"
+		panel.hide()
+	else:
+		skip_menu = true
+		get_tree().reload_current_scene()
 
 func _mesh(size: Vector3, color: Color, pos: Vector3) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
@@ -125,7 +177,23 @@ func _enemy(pos: Vector3, rng: float) -> void:
 	add_child(en)
 	enemies.append(en)
 
+func _checkpoint(spot: Vector3, flag_pos: Vector3) -> void:
+	var mi := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(0.15, 2.0, 0.15)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.9, 0.1, 0.1)
+	bm.material = mat
+	mi.mesh = bm
+	mi.position = flag_pos
+	add_child(mi)
+	cps.append(spot)
+	cp_mats.append(mat)
+	cp_done.append(false)
+
 func _input(ev: InputEvent) -> void:
+	if state != "play":
+		return
 	var sz := get_viewport().get_visible_rect().size
 	if ev is InputEventScreenTouch:
 		if ev.pressed:
@@ -150,12 +218,19 @@ func _near(p: Vector3, r: float) -> bool:
 func _hurt() -> void:
 	lives -= 1
 	if lives <= 0:
-		lives = 3
-		fruits = 0
-	player.position = Vector3(0, 1.5, 0)
+		state = "over"
+		show_panel("GAME OVER", "RETRY")
+		return
+	player.position = respawn_pos
 	player.velocity = Vector3.ZERO
 
 func _physics_process(delta: float) -> void:
+	cam.global_position = player.global_position + Vector3(0, 5, 8)
+	cam.look_at(player.global_position)
+	label.text = "Fruits: %d    Lives: %d" % [fruits, lives]
+	if state != "play":
+		return
+
 	t += delta
 	player.velocity.x = move_vec.x * SPEED
 	player.velocity.z = move_vec.y * SPEED
@@ -194,16 +269,20 @@ func _physics_process(delta: float) -> void:
 				player.velocity.y = JUMP_V * 0.7
 			else:
 				_hurt()
+				if state != "play":
+					return
+
+	for i in range(cps.size()):
+		if not cp_done[i] and player.position.distance_to(cps[i]) < 2.0:
+			cp_done[i] = true
+			respawn_pos = cps[i] + Vector3(0, 0.3, 0)
+			cp_mats[i].albedo_color = Color(0.2, 1.0, 0.2)
 
 	if player.position.y < -15.0:
 		_hurt()
+		if state != "play":
+			return
 	if not won and player.position.z < -43.0 and player.position.y > -1.0:
 		won = true
-
-	if won:
-		label.text = "YOU WIN!  Fruits: %d" % fruits
-	else:
-		label.text = "Fruits: %d    Lives: %d" % [fruits, lives]
-
-	cam.global_position = player.global_position + Vector3(0, 5, 8)
-	cam.look_at(player.global_position)
+		state = "win"
+		show_panel("YOU WIN!\nFruits: %d" % fruits, "PLAY AGAIN")
