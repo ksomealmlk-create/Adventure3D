@@ -330,6 +330,8 @@ func _build_level() -> void:
 func _plat(cx: float, top: float, z0: float, z1: float, w: float, color: Color) -> StaticBody3D:
 	var ln := absf(z1 - z0)
 	var body := _box(Vector3(cx, top - 0.5, (z0 + z1) * 0.5), Vector3(w, 1, ln), color)
+	body.add_child(_mesh(Vector3(w + 0.06, 0.1, ln + 0.06), color.lightened(0.3), Vector3(0, 0.46, 0)))
+	body.add_child(_mesh(Vector3(w + 0.04, 0.22, ln + 0.04), color.darkened(0.3), Vector3(0, -0.4, 0)))
 	_add_pillars(body, w, ln, top)
 	return body
 
