@@ -660,6 +660,16 @@ func _physics_process(delta: float) -> void:
 	var vy_before := player.velocity.y
 	player.move_and_slide()
 	var on_fl := player.is_on_floor()
+	if spin_t > 0.0:
+		visual.play("spin")
+	elif not on_fl:
+		visual.play("jump" if player.velocity.y > 0.0 else "fall")
+	elif Vector2(player.velocity.x, player.velocity.z).length() > 6.0:
+		visual.play("run")
+	elif Vector2(player.velocity.x, player.velocity.z).length() > 0.5:
+		visual.play("walk")
+	else:
+		visual.play("idle")
 	if on_fl and not was_floor and vy_before < -5.0:
 		_burst(player.position - Vector3(0, 0.7, 0), Color(1, 1, 1), 8, 3.0)
 	was_floor = on_fl
@@ -712,6 +722,7 @@ func _physics_process(delta: float) -> void:
 		won = true
 		state = "win"
 		_play("win")
+		visual.play("win")
 		_burst(player.position + Vector3(0, 1, 0), Color(1, 0.84, 0), 40, 8.0)
 		show_panel("YOU WIN!\nFruits: %d" % fruits, "PLAY AGAIN")
 
