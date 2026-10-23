@@ -10,13 +10,14 @@ const SPIN_TIME := 0.45
 const MIX := 22050
 const ENEMY_COL := Color(0.45, 0.12, 0.55)
 
-# Optional ready-made models (.glb). If a file is missing, the game
+# Ready-made models (Quaternius, CC0). If a file is missing, the game
 # falls back to the built-in shapes, so nothing breaks.
-# [path, scale, y_offset]
+# [path, scale, y_offset, animation_name_suffix]
 const MODELS := {
-	"torch": ["res://models/torch.glb", 1.0, 0.0],
-	"crate": ["res://models/crate.glb", 1.0, -0.5],
-	"enemy": ["res://models/enemy.glb", 1.0, -0.4],
+	"torch": ["res://models/torch.glb", 1.0, 0.0, ""],
+	"crate": ["res://models/crate.gltf", 0.5, 0.0, ""],
+	"enemy": ["res://models/enemy.gltf", 0.55, -0.4, "Idle"],
+	"flag": ["res://models/goal_flag.gltf", 1.3, 0.0, ""],
 }
 
 var player: CharacterBody3D
@@ -376,7 +377,22 @@ func _model(key: String) -> Node3D:
 	var s: float = info[1]
 	inst.scale = Vector3(s, s, s)
 	inst.position = Vector3(0, float(info[2]), 0)
+	var want: String = info[3]
+	if want != "":
+		_autoplay_anim(inst, want)
 	return inst
+
+func _autoplay_anim(root: Node, want: String) -> void:
+	var found := root.find_children("*", "AnimationPlayer", true, false)
+	if found.is_empty():
+		return
+	var ap := found[0] as AnimationPlayer
+	for nm in ap.get_animation_list():
+		if String(nm).ends_with(want):
+			var a := ap.get_animation(nm)
+			a.loop_mode = Animation.LOOP_LINEAR
+			ap.autoplay = nm
+			return
 
 func _torch(pos: Vector3) -> void:
 	var root := Node3D.new()
@@ -473,6 +489,10 @@ func _build_level() -> void:
 	# goal: tall light beam + glow
 	_torch(Vector3(-3.6, 4.0, -113.0))
 	_torch(Vector3(3.6, 4.0, -113.0))
+	var flag_mdl := _model("flag")
+	if flag_mdl != null:
+		flag_mdl.position += Vector3(2.0, 4.0, -116.0)
+		add_child(flag_mdl)
 	var beam := MeshInstance3D.new()
 	var bmesh := BoxMesh.new()
 	bmesh.size = Vector3(0.3, 16.0, 0.3)
