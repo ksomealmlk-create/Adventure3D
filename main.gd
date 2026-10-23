@@ -6,6 +6,7 @@ const SPEED := 7.0
 const JUMP_V := 10.0
 const GRAV := 28.0
 const SPIN_TIME := 0.45
+const MIX := 22050
 
 var player: CharacterBody3D
 var visual: Node3D
@@ -14,6 +15,12 @@ var label: Label
 var panel: ColorRect
 var title_label: Label
 var button: Button
+var pause_btn: Button
+var stick_base: Panel
+var stick_knob: Panel
+var sfx := {}
+var sfx_players: Array = []
+var sfx_idx := 0
 var state := "menu"
 var move_vec := Vector2.ZERO
 var touch_id := -1
@@ -49,6 +56,7 @@ func _ready() -> void:
 	sun.rotation_degrees = Vector3(-50, 30, 0)
 	add_child(sun)
 
+	_build_sounds()
 	_build_level()
 
 	player = CharacterBody3D.new()
@@ -68,22 +76,41 @@ func _ready() -> void:
 	cam = Camera3D.new()
 	add_child(cam)
 
+	_build_ui()
+
+	if skip_menu:
+		state = "play"
+		panel.hide()
+	else:
+		show_panel("ADVENTURE 3D", "START")
+
+func _build_ui() -> void:
 	var layer := CanvasLayer.new()
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	var sz := get_viewport().get_visible_rect().size
+
 	label = Label.new()
 	label.position = Vector2(20, 20)
 	label.add_theme_font_size_override("font_size", 32)
 	layer.add_child(label)
-	var sz := get_viewport().get_visible_rect().size
-	var l1 := Label.new()
-	l1.text = "SPIN"
-	l1.position = Vector2(sz.x * 0.55, sz.y * 0.8)
-	l1.add_theme_font_size_override("font_size", 40)
-	layer.add_child(l1)
-	var l2 := Label.new()
-	l2.text = "JUMP"
-	l2.position = Vector2(sz.x * 0.82, sz.y * 0.8)
-	l2.add_theme_font_size_override("font_size", 40)
-	layer.add_child(l2)
+
+	_round_button(layer, "SPIN", Vector2(sz.x * 0.52, sz.y * 0.72), Vector2(sz.x * 0.2, sz.y * 0.22), Color(0.2, 0.5, 1.0, 0.35))
+	_round_button(layer, "JUMP", Vector2(sz.x * 0.77, sz.y * 0.72), Vector2(sz.x * 0.2, sz.y * 0.22), Color(0.2, 0.9, 0.3, 0.35))
+
+	stick_base = _circle(160.0, Color(1, 1, 1, 0.18))
+	stick_knob = _circle(70.0, Color(1, 1, 1, 0.45))
+	stick_base.hide()
+	stick_knob.hide()
+	layer.add_child(stick_base)
+	layer.add_child(stick_knob)
+
+	pause_btn = Button.new()
+	pause_btn.text = "II"
+	pause_btn.add_theme_font_size_override("font_size", 36)
+	pause_btn.custom_minimum_size = Vector2(90, 90)
+	pause_btn.position = Vector2(sz.x - 120, 20)
+	pause_btn.pressed.connect(_on_pause)
+	layer.add_child(pause_btn)
 
 	panel = ColorRect.new()
 	panel.color = Color(0, 0, 0, 0.55)
@@ -106,12 +133,82 @@ func _ready() -> void:
 	vb.add_child(button)
 	add_child(layer)
 
-	if skip_menu:
-		state = "play"
-		panel.hide()
-	else:
-		show_panel("ADVENTURE 3D", "START")
+func _circle(d: float, color: Color) -> Panel:
+	var p := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = color
+	var r := int(d * 0.5)
+	sb.corner_radius_top_left = r
+	sb.corner_radius_top_right = r
+	sb.corner_radius_bottom_left = r
+	sb.corner_radius_bottom_right = r
+	p.add_theme_stylebox_override("panel", sb)
+	p.size = Vector2(d, d)
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return p
 
+func _round_button(layer: CanvasLayer, text: String, pos: Vector2, size: Vector2, color: Color) -> void:
+	var p := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = color
+	sb.set_corner_radius_all(40)
+	sb.border_color = Color(1, 1, 1, 0.5)
+	sb.set_border_width_all(4)
+	p.add_theme_stylebox_override("panel", sb)
+	p.position = pos
+	p.size = size
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 44)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.set_anchors_preset(Control.PRESET_FULL_RECT)
+	p.add_child(l)
+	layer.add_child(p)
+
+# ---------- Sounds (generated in code) ----------
+func _tone(freq0: float, freq1: float, dur: float, vol: float, noise: float) -> AudioStreamWAV:
+	var n := int(MIX * dur)
+	var data := PackedByteArray()
+	data.resize(n * 2)
+	var phase := 0.0
+	for i in range(n):
+		var k := float(i) / float(n)
+		var f := lerpf(freq0, freq1, k)
+		phase += TAU * f / float(MIX)
+		var env := (1.0 - k) * minf(1.0, k * 40.0)
+		var s := sin(phase) * (1.0 - noise) + (randf() * 2.0 - 1.0) * noise
+		var v := int(clampf(s * env * vol, -1.0, 1.0) * 32000.0)
+		data.encode_s16(i * 2, v)
+	var w := AudioStreamWAV.new()
+	w.format = AudioStreamWAV.FORMAT_16_BITS
+	w.mix_rate = MIX
+	w.stereo = false
+	w.data = data
+	return w
+
+func _build_sounds() -> void:
+	sfx["jump"] = _tone(300, 650, 0.16, 0.5, 0.0)
+	sfx["spin"] = _tone(500, 250, 0.22, 0.35, 0.25)
+	sfx["crate"] = _tone(200, 80, 0.2, 0.6, 0.7)
+	sfx["stomp"] = _tone(400, 150, 0.15, 0.55, 0.1)
+	sfx["hurt"] = _tone(220, 70, 0.4, 0.6, 0.15)
+	sfx["check"] = _tone(660, 990, 0.25, 0.45, 0.0)
+	sfx["win"] = _tone(500, 1200, 0.7, 0.5, 0.0)
+	sfx["lose"] = _tone(300, 60, 0.8, 0.55, 0.1)
+	for i in range(6):
+		var ap := AudioStreamPlayer.new()
+		add_child(ap)
+		sfx_players.append(ap)
+
+func _play(name: String) -> void:
+	var ap: AudioStreamPlayer = sfx_players[sfx_idx]
+	sfx_idx = (sfx_idx + 1) % sfx_players.size()
+	ap.stream = sfx[name]
+	ap.play()
+
+# ---------- Level ----------
 func _build_level() -> void:
 	var green := Color(0.3, 0.7, 0.3)
 	var brown := Color(0.6, 0.4, 0.2)
@@ -119,26 +216,22 @@ func _build_level() -> void:
 	var red := Color(0.8, 0.3, 0.3)
 	var gold := Color(1, 0.84, 0)
 
-	# 1) Start area
 	_plat(0, 0.0, 8, -12, 8, green)
 	_crate(Vector3(-2, 0.5, -3))
 	_crate(Vector3(0, 0.5, -3))
 	_crate(Vector3(2, 0.5, -3))
 	_enemy(Vector3(0, 0.4, -7), 3.0, "x")
 
-	# 2) Jumping platforms
 	_plat(0, 0.0, -15, -18, 3.5, brown)
 	_plat(0, 0.8, -21, -24, 3.5, brown)
 	_plat(0, 1.6, -27, -30, 3.5, red)
 	_crate(Vector3(0, 1.3, -22.5))
 	_crate(Vector3(0, 2.1, -28.5))
 
-	# 3) Bridge with an enemy
 	_plat(0, 1.6, -30, -46, 1.6, wood)
 	_checkpoint(Vector3(0, 2.1, -31), Vector3(0.55, 2.6, -31))
 	_enemy(Vector3(0, 2.0, -38), 4.0, "z")
 
-	# 4) Island 1
 	_plat(0, 1.6, -46, -54, 8, green)
 	_crate(Vector3(-2, 2.1, -49))
 	_crate(Vector3(2, 2.1, -49))
@@ -146,11 +239,9 @@ func _build_level() -> void:
 	_checkpoint(Vector3(0, 2.1, -50), Vector3(3, 2.6, -50))
 	_enemy(Vector3(0, 2.0, -48), 3.0, "x")
 
-	# 5) Moving platform over a gap
 	var mp := _plat(0, 1.6, -56.5, -59.5, 3.5, Color(0.2, 0.5, 0.9))
 	movers.append({"node": mp, "base": mp.position, "amp": 2.0, "w": 3.5, "len": 3.0})
 
-	# 6) Island 2 and the trap path
 	_plat(0, 1.6, -66, -72, 8, green)
 	_crate(Vector3(-2, 2.1, -70))
 	_crate(Vector3(2, 2.1, -70))
@@ -161,7 +252,6 @@ func _build_level() -> void:
 	_hazard(Vector3(0, 1.95, -81))
 	_hazard(Vector3(0, 1.95, -86))
 
-	# 7) Final climb
 	_plat(0, 2.4, -93, -96, 3, brown)
 	_plat(0, 3.2, -99, -102, 3, brown)
 	_checkpoint(Vector3(0, 3.7, -100.5), Vector3(1.0, 4.2, -100.5))
@@ -180,14 +270,25 @@ func show_panel(title: String, btn: String) -> void:
 	title_label.text = title
 	button.text = btn
 	panel.show()
+	pause_btn.hide()
 
 func _on_button() -> void:
-	if state == "menu":
+	if state == "menu" or state == "pause":
 		state = "play"
 		panel.hide()
+		pause_btn.show()
 	else:
 		skip_menu = true
 		get_tree().reload_current_scene()
+
+func _on_pause() -> void:
+	if state == "play":
+		state = "pause"
+		move_vec = Vector2.ZERO
+		touch_id = -1
+		stick_base.hide()
+		stick_knob.hide()
+		show_panel("PAUSED", "RESUME")
 
 func _mesh(size: Vector3, color: Color, pos: Vector3) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
@@ -250,6 +351,10 @@ func _input(ev: InputEvent) -> void:
 				if touch_id == -1:
 					touch_id = ev.index
 					touch_start = ev.position
+					stick_base.position = ev.position - stick_base.size * 0.5
+					stick_knob.position = ev.position - stick_knob.size * 0.5
+					stick_base.show()
+					stick_knob.show()
 			elif ev.position.x < sz.x * 0.75:
 				spin_req = true
 			else:
@@ -257,8 +362,11 @@ func _input(ev: InputEvent) -> void:
 		elif ev.index == touch_id:
 			touch_id = -1
 			move_vec = Vector2.ZERO
+			stick_base.hide()
+			stick_knob.hide()
 	elif ev is InputEventScreenDrag and ev.index == touch_id:
 		move_vec = ((ev.position - touch_start) / 100.0).limit_length(1.0)
+		stick_knob.position = touch_start + move_vec * 80.0 - stick_knob.size * 0.5
 
 func _near(p: Vector3, r: float) -> bool:
 	var d := Vector2(p.x - player.position.x, p.z - player.position.z).length()
@@ -268,8 +376,10 @@ func _hurt() -> void:
 	lives -= 1
 	if lives <= 0:
 		state = "over"
+		_play("lose")
 		show_panel("GAME OVER", "RETRY")
 		return
+	_play("hurt")
 	player.position = respawn_pos
 	player.velocity = Vector3.ZERO
 
@@ -287,10 +397,12 @@ func _physics_process(delta: float) -> void:
 		player.velocity.y -= GRAV * delta
 	elif jump_req:
 		player.velocity.y = JUMP_V
+		_play("jump")
 	jump_req = false
 
 	if spin_req and spin_t <= 0.0:
 		spin_t = SPIN_TIME
+		_play("spin")
 	spin_req = false
 	if spin_t > 0.0:
 		spin_t -= delta
@@ -300,10 +412,12 @@ func _physics_process(delta: float) -> void:
 				crates.erase(c)
 				c.queue_free()
 				fruits += 1
+				_play("crate")
 		for en in enemies.duplicate():
 			if is_instance_valid(en) and _near(en.position, 2.3):
 				enemies.erase(en)
 				en.queue_free()
+				_play("stomp")
 		if spin_t <= 0.0:
 			visual.rotation.y = 0.0
 
@@ -331,6 +445,7 @@ func _physics_process(delta: float) -> void:
 				enemies.erase(en)
 				en.queue_free()
 				player.velocity.y = JUMP_V * 0.7
+				_play("stomp")
 			else:
 				_hurt()
 				if state != "play":
@@ -350,6 +465,7 @@ func _physics_process(delta: float) -> void:
 			cp_done[i] = true
 			respawn_pos = cps[i] + Vector3(0, 0.3, 0)
 			cp_mats[i].albedo_color = Color(0.2, 1.0, 0.2)
+			_play("check")
 
 	if player.position.y < -15.0:
 		_hurt()
@@ -358,4 +474,5 @@ func _physics_process(delta: float) -> void:
 	if not won and player.position.z < -112.0 and player.position.y > 3.0:
 		won = true
 		state = "win"
+		_play("win")
 		show_panel("YOU WIN!\nFruits: %d" % fruits, "PLAY AGAIN")
