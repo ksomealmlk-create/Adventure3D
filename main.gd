@@ -528,7 +528,7 @@ func _box(pos: Vector3, size: Vector3, color: Color) -> StaticBody3D:
 	add_child(body)
 	return body
 
-func _crate(pos: Vector3) -> void:
+func _crate_old(pos: Vector3) -> void:
 	var c := _box(pos, Vector3(1, 1, 1), Color(0.9, 0.7, 0.2))
 	crates.append(c)
 
@@ -760,3 +760,17 @@ func _enemy(pos: Vector3, rng: float, axis: String) -> void:
 	en.set_meta("axis", axis)
 	add_child(en)
 	enemies.append(en)
+
+func _crate(pos: Vector3) -> void:
+	var c := _box(pos, Vector3(1, 1, 1), Color(0.8, 0.55, 0.25))
+	var dark := Color(0.4, 0.25, 0.1)
+	for sx in [-0.5, 0.5]:
+		for sz in [-0.5, 0.5]:
+			c.add_child(_mesh(Vector3(0.14, 1.04, 0.14), dark, Vector3(sx, 0, sz)))
+	var p1 := _mesh(Vector3(1.25, 0.1, 0.04), dark, Vector3(0, 0, 0.51))
+	p1.rotation.z = 0.785
+	c.add_child(p1)
+	var p2 := _mesh(Vector3(1.25, 0.1, 0.04), dark, Vector3(0, 0, 0.51))
+	p2.rotation.z = -0.785
+	c.add_child(p2)
+	crates.append(c)
