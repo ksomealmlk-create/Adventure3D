@@ -29,6 +29,7 @@ func _ready() -> void:
 	body.add_child(inst)
 	inst.rotation.y = YAW
 	_fit(inst)
+	_pose_arms(inst)
 
 func _fit(inst: Node3D) -> void:
 	var have := false
@@ -98,3 +99,29 @@ func _process(delta: float) -> void:
 		"win":
 			body.position.y = absf(sin(anim_t * 6.0)) * 0.5
 			body.rotation.y = anim_t * 3.0
+
+const ARM_DOWN := 1.2
+
+func _pose_arms(inst: Node3D) -> void:
+	var found := inst.find_children("*", "Skeleton3D", true, false)
+	if found.is_empty():
+		print("Judy: no skeleton")
+		return
+	var sk := found[0] as Skeleton3D
+	var n := 0
+	for i in sk.get_bone_count():
+		var nm := sk.get_bone_name(i).to_lower()
+		if not (nm.begins_with("def") and nm.contains("upper_arm")):
+			continue
+		var g := sk.get_bone_global_rest(i)
+		var side := 1.0 if g.origin.x > 0.0 else -1.0
+		var rot := Basis(Vector3(0, 0, 1), -side * ARM_DOWN)
+		var par := sk.get_bone_parent(i)
+		var pg := Basis.IDENTITY
+		if par >= 0:
+			pg = sk.get_bone_global_rest(par).basis
+		var lb := sk.get_bone_rest(i).basis
+		var nb := (pg.inverse() * rot * pg * lb).orthonormalized()
+		sk.set_bone_pose_rotation(i, nb.get_rotation_quaternion())
+		n += 1
+	print("Judy arms posed: ", n)
