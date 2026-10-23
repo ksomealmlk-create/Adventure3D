@@ -21,7 +21,8 @@ root = scene.collection
 # 1) remove rig widgets, cameras, lights
 for ob in list(bpy.data.objects):
     n = ob.name.lower()
-    if n.startswith("wgt") or ob.type in ("CAMERA", "LIGHT"):
+    junk = ("wdgt", "wgt", "ground", "badgebooleans", "eyeboolean", "camera_rig")
+    if n.startswith(junk) or ob.type in ("CAMERA", "LIGHT"):
         bpy.data.objects.remove(ob, do_unlink=True)
 
 # 2) make everything visible and linked to the scene
@@ -57,6 +58,23 @@ for o in meshes:
         except Exception as e:
             L("shapekey warn", o.name, e)
 
+meshes = [o for o in bpy.data.objects if o.type == "MESH"]
+for o in meshes:
+    for m in list(o.modifiers):
+        if m.type in ("MESH_DEFORM", "BOOLEAN", "MIRROR"):
+            try:
+                bpy.context.view_layer.objects.active = o
+                bpy.ops.object.modifier_apply(modifier=m.name)
+            except Exception as e:
+                L("apply warn", o.name, m.name, e)
+                try:
+                    o.modifiers.remove(m)
+                except Exception:
+                    pass
+cage = bpy.data.objects.get("MeshCage")
+if cage:
+    bpy.data.objects.remove(cage, do_unlink=True)
+meshes = [o for o in bpy.data.objects if o.type == "MESH"]
 total = sum(est_tris(o) for o in meshes)
 ratio = min(1.0, TARGET_TRIS / max(1, total))
 L("TOTAL_TRIS_EST", total, "DECIMATE_RATIO", round(ratio, 4))
