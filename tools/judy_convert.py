@@ -76,8 +76,7 @@ for o in meshes:
                     pass
 cage = bpy.data.objects.get("MeshCage")
 if cage:
-    cage.hide_set(True)
-    cage.hide_viewport = True
+    bpy.data.objects.remove(cage, do_unlink=True)
 meshes = [o for o in bpy.data.objects if o.type == "MESH"]
 total = sum(est_tris(o) for o in meshes)
 ratio = min(1.0, TARGET_TRIS / max(1, total))
