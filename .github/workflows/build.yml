@@ -7,6 +7,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
     steps:
       - uses: actions/checkout@v4
 
@@ -15,9 +17,8 @@ jobs:
           distribution: temurin
           java-version: 17
 
-
       - name: Android SDK packages
-        run: $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" < <(yes)
+        run: $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" < <(yes)
 
       - name: Install Godot and templates
         run: |
@@ -43,13 +44,22 @@ jobs:
           export/android/debug_keystore = "$HOME/debug.keystore"
           export/android/debug_keystore_user = "androiddebugkey"
           export/android/debug_keystore_pass = "android"
+          export/android/shutdown_adb_on_exit = true
           EOF2
+
+      - name: Diagnostics
+        run: |
+          cat ~/.config/godot/editor_settings-4.3.tres
+          ls $ANDROID_HOME $ANDROID_HOME/build-tools $ANDROID_HOME/platforms
+          ls ~/.local/share/godot/export_templates/4.3.stable
+          ls -la $HOME/debug.keystore
 
       - name: Export APK
         run: |
           godot --headless --import || true
           mkdir -p build
-          godot --headless --export-debug "Android" build/adventure3d.apk
+          godot --headless --verbose --export-debug "Android" build/adventure3d.apk 2>&1 | tail -n 80
+          ls -la build
 
       - uses: actions/upload-artifact@v4
         with:
