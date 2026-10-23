@@ -542,7 +542,7 @@ func _enemy_old(pos: Vector3, rng: float, axis: String) -> void:
 	add_child(en)
 	enemies.append(en)
 
-func _checkpoint(spot: Vector3, flag_pos: Vector3) -> void:
+func _checkpoint_old(spot: Vector3, flag_pos: Vector3) -> void:
 	var mi := MeshInstance3D.new()
 	var bm := BoxMesh.new()
 	bm.size = Vector3(0.15, 2.0, 0.15)
@@ -774,3 +774,22 @@ func _crate(pos: Vector3) -> void:
 	p2.rotation.z = -0.785
 	c.add_child(p2)
 	crates.append(c)
+
+func _checkpoint(spot: Vector3, flag_pos: Vector3) -> void:
+	var root := Node3D.new()
+	root.position = flag_pos
+	root.add_child(_mesh(Vector3(0.12, 2.2, 0.12), Color(0.85, 0.85, 0.85), Vector3.ZERO))
+	root.add_child(_mesh(Vector3(0.6, 0.15, 0.6), Color(0.4, 0.4, 0.45), Vector3(0, -1.1, 0)))
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.9, 0.1, 0.1)
+	var cloth := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(0.7, 0.45, 0.05)
+	bm.material = mat
+	cloth.mesh = bm
+	cloth.position = Vector3(0.4, 0.8, 0)
+	root.add_child(cloth)
+	add_child(root)
+	cps.append(spot)
+	cp_mats.append(mat)
+	cp_done.append(false)
