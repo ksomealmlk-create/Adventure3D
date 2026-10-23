@@ -63,6 +63,9 @@ for o in meshes:
     for m in list(o.modifiers):
         if m.type in ("MESH_DEFORM", "BOOLEAN", "MIRROR"):
             try:
+                m.show_viewport = True
+                m.show_render = True
+                L("APPLYING", o.name, m.type)
                 bpy.context.view_layer.objects.active = o
                 bpy.ops.object.modifier_apply(modifier=m.name)
             except Exception as e:
@@ -73,7 +76,8 @@ for o in meshes:
                     pass
 cage = bpy.data.objects.get("MeshCage")
 if cage:
-    bpy.data.objects.remove(cage, do_unlink=True)
+    cage.hide_set(True)
+    cage.hide_viewport = True
 meshes = [o for o in bpy.data.objects if o.type == "MESH"]
 total = sum(est_tris(o) for o in meshes)
 ratio = min(1.0, TARGET_TRIS / max(1, total))
