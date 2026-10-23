@@ -534,7 +534,7 @@ func _crate(pos: Vector3) -> void:
 	var c := _box(pos, Vector3(1, 1, 1), Color(0.9, 0.7, 0.2))
 	crates.append(c)
 
-func _enemy(pos: Vector3, rng: float, axis: String) -> void:
+func _enemy_old(pos: Vector3, rng: float, axis: String) -> void:
 	var en := Node3D.new()
 	en.add_child(_mesh(Vector3(0.8, 0.8, 0.8), Color(0.8, 0.1, 0.1), Vector3.ZERO))
 	en.position = pos
