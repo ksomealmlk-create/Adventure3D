@@ -130,8 +130,8 @@ func _ready() -> void:
 	sh.height = 1.6
 	cs.shape = sh
 	player.add_child(cs)
-	if ResourceLoader.exists("res://models/judy.glb"):
-		visual = preload("res://lion_character.gd").new()
+	if ResourceLoader.exists("res://hero.glb"):
+		visual = preload("res://hero_character.gd").new()
 	else:
 		visual = preload("res://character.gd").new()
 	player.add_child(visual)
