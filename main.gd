@@ -131,7 +131,7 @@ func _ready() -> void:
 	cs.shape = sh
 	player.add_child(cs)
 	if ResourceLoader.exists("res://models/judy.glb"):
-		visual = preload("res://judy_character.gd").new()
+		visual = preload("res://lion_character.gd").new()
 	else:
 		visual = preload("res://character.gd").new()
 	player.add_child(visual)
