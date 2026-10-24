@@ -35,7 +35,8 @@ func _ready() -> void:
 
 func _setup_rig(inst: Node3D) -> void:
 	var m := StandardMaterial3D.new()
-	m.albedo_color = LION_COLOR
+	m.albedo_color = Color(1, 1, 1)
+	m.vertex_color_use_as_albedo = true
 	m.roughness = 0.75
 	for n in inst.find_children("*", "MeshInstance3D", true, false):
 		(n as MeshInstance3D).material_override = m
@@ -76,7 +77,8 @@ func _rot(bone: String, x: float, y: float = 0.0, z: float = 0.0) -> void:
 	var q := Quaternion.from_euler(Vector3(x, y, z))
 	skel.set_bone_pose_rotation(i, skel.get_bone_rest(i).basis.get_rotation_quaternion() * q)
 
-func play(n: String) -> void:
+func play(n0: String) -> void:
+	var n := "run" if n0 == "walk" else n0
 	if n == anim:
 		return
 	anim = n
