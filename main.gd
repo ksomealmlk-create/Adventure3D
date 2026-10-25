@@ -594,66 +594,98 @@ func _arch(z: float, top: float, half: float) -> void:
 	add_child(_mesh(Vector3(0.35, 3.4, 0.35), stone, Vector3(half, top + 1.7, z)))
 	add_child(_mesh(Vector3(half * 2.0 + 0.7, 0.4, 0.5), stone, Vector3(0, top + 3.5, z)))
 
-func _build_forest() -> void:
-	var ground := MeshInstance3D.new()
-	var pm := PlaneMesh.new()
-	pm.size = Vector2(500, 500)
-	pm.material = _mat(Color(0.05, 0.1, 0.08))
-	ground.mesh = pm
-	ground.position = Vector3(0, -10, -60)
-	ground.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(ground)
+func _tree_shader(base_off: float, tint: Color) -> ShaderMaterial:
+        var sh := Shader.new()
+        sh.code = """
+shader_type spatial;
+uniform vec4 tint : source_color = vec4(1.0);
+uniform float base_off = 0.0;
+uniform float sway = 0.1;
+void vertex() {
+        float hgt = clamp(VERTEX.y + base_off, 0.0, 1.0);
+        vec3 ip = MODEL_MATRIX[3].xyz;
+        float ph = ip.x * 0.37 + ip.z * 0.21;
+        float w = sin(TIME * 1.4 + ph) + 0.5 * sin(TIME * 2.7 + ph * 1.7);
+        VERTEX.x += w * sway * hgt * hgt;
+        VERTEX.z += w * sway * 0.6 * hgt * hgt;
+}
+void fragment() {
+        ALBEDO = COLOR.rgb * tint.rgb;
+        ROUGHNESS = 0.9;
+}
+"""
+        var m := ShaderMaterial.new()
+        m.shader = sh
+        m.set_shader_parameter("base_off", base_off)
+        m.set_shader_parameter("tint", tint)
+        return m
 
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 12345
-	var trunk := CylinderMesh.new()
-	trunk.top_radius = 0.3
-	trunk.bottom_radius = 0.4
-	trunk.height = 1.0
-	trunk.radial_segments = 6
-	trunk.rings = 1
-	trunk.material = _mat(Color(0.17, 0.12, 0.1))
-	var crown := CylinderMesh.new()
-	crown.top_radius = 0.0
-	crown.bottom_radius = 1.0
-	crown.height = 1.0
-	crown.radial_segments = 7
-	crown.rings = 1
-	var cmat := StandardMaterial3D.new()
-	cmat.vertex_color_use_as_albedo = true
-	cmat.roughness = 0.9
-	crown.material = cmat
-	var count := 160
-	var mm_t := MultiMesh.new()
-	mm_t.transform_format = MultiMesh.TRANSFORM_3D
-	mm_t.mesh = trunk
-	mm_t.instance_count = count
-	var mm_c := MultiMesh.new()
-	mm_c.transform_format = MultiMesh.TRANSFORM_3D
-	mm_c.use_colors = true
-	mm_c.mesh = crown
-	mm_c.instance_count = count
-	for i in range(count):
-		var side := -1.0 if rng.randf() < 0.5 else 1.0
-		var x := side * rng.randf_range(7.5, 38.0)
-		var z := rng.randf_range(25.0, -150.0)
-		var h := rng.randf_range(11.0, 20.0)
-		var th := h * 0.5
-		var tw := 1.0 + h * 0.02
-		mm_t.set_instance_transform(i, Transform3D(Basis.IDENTITY.scaled(Vector3(tw, th, tw)), Vector3(x, -10.0 + th * 0.5, z)))
-		var ch := h * 0.6
-		var cr := 1.4 + h * 0.1
-		mm_c.set_instance_transform(i, Transform3D(Basis.IDENTITY.scaled(Vector3(cr, ch, cr)), Vector3(x, -10.0 + h * 0.4 + ch * 0.5, z)))
-		var g := rng.randf()
-		mm_c.set_instance_color(i, Color(0.03 + 0.05 * g, 0.12 + 0.12 * g, 0.1 + 0.08 * g))
-	var mi_t := MultiMeshInstance3D.new()
-	mi_t.multimesh = mm_t
-	mi_t.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(mi_t)
-	var mi_c := MultiMeshInstance3D.new()
-	mi_c.multimesh = mm_c
-	mi_c.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(mi_c)
+func _make_tree_crown() -> ArrayMesh:
+        var st := SurfaceTool.new()
+        st.begin(Mesh.PRIMITIVE_TRIANGLES)
+        var layers := [[0.0, 0.55, 1.0], [0.3, 0.5, 0.78], [0.58, 0.45, 0.55]]
+        for lay in layers:
+                var cone := CylinderMesh.new()
+                cone.top_radius = 0.0
+                cone.bottom_radius = lay[2]
+                cone.height = lay[1]
+                cone.radial_segments = 7
+                cone.rings = 1
+                st.append_from(cone, 0, Transform3D(Basis.IDENTITY, Vector3(0, lay[0] + lay[1] * 0.5, 0)))
+        return st.commit()
+
+func _build_forest() -> void:
+        var ground := MeshInstance3D.new()
+        var pm := PlaneMesh.new()
+        pm.size = Vector2(500, 500)
+        pm.material = _mat(Color(0.05, 0.1, 0.08))
+        ground.mesh = pm
+        ground.position = Vector3(0, -10, -60)
+        ground.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+        add_child(ground)
+
+        var rng := RandomNumberGenerator.new()
+        rng.seed = 12345
+        var trunk := CylinderMesh.new()
+        trunk.top_radius = 0.25
+        trunk.bottom_radius = 0.4
+        trunk.height = 1.0
+        trunk.radial_segments = 6
+        trunk.rings = 1
+        trunk.material = _tree_shader(0.5, Color(0.17, 0.12, 0.1))
+        var crown := _make_tree_crown()
+        crown.surface_set_material(0, _tree_shader(0.0, Color(1, 1, 1)))
+        var count := 160
+        var mm_t := MultiMesh.new()
+        mm_t.transform_format = MultiMesh.TRANSFORM_3D
+        mm_t.mesh = trunk
+        mm_t.instance_count = count
+        var mm_c := MultiMesh.new()
+        mm_c.transform_format = MultiMesh.TRANSFORM_3D
+        mm_c.use_colors = true
+        mm_c.mesh = crown
+        mm_c.instance_count = count
+        for i in range(count):
+                var side := -1.0 if rng.randf() < 0.5 else 1.0
+                var x := side * rng.randf_range(7.5, 38.0)
+                var z := rng.randf_range(25.0, -150.0)
+                var h := rng.randf_range(11.0, 20.0)
+                var th := h * 0.5
+                var tw := 1.0 + h * 0.02
+                mm_t.set_instance_transform(i, Transform3D(Basis.IDENTITY.scaled(Vector3(tw, th, tw)), Vector3(x, -10.0 + th * 0.5, z)))
+                var ch := h * 0.68
+                var cr := 1.5 + h * 0.1
+                mm_c.set_instance_transform(i, Transform3D(Basis.IDENTITY.scaled(Vector3(cr, ch, cr)), Vector3(x, -10.0 + h * 0.38, z)))
+                var g := rng.randf()
+                mm_c.set_instance_color(i, Color(0.04 + 0.06 * g, 0.18 + 0.16 * g, 0.1 + 0.08 * g))
+        var mi_t := MultiMeshInstance3D.new()
+        mi_t.multimesh = mm_t
+        mi_t.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+        add_child(mi_t)
+        var mi_c := MultiMeshInstance3D.new()
+        mi_c.multimesh = mm_c
+        mi_c.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+        add_child(mi_c)
 
 func _burst(pos: Vector3, color: Color, amount: int, speed: float) -> void:
 	if not fx_on:
