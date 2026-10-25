@@ -677,7 +677,7 @@ func _build_forest() -> void:
                 var cr := 1.5 + h * 0.1
                 mm_c.set_instance_transform(i, Transform3D(Basis.IDENTITY.scaled(Vector3(cr, ch, cr)), Vector3(x, -10.0 + h * 0.38, z)))
                 var g := rng.randf()
-                mm_c.set_instance_color(i, Color(0.04 + 0.06 * g, 0.18 + 0.16 * g, 0.1 + 0.08 * g))
+                mm_c.set_instance_color(i, Color(0.15 + 0.12 * g, 0.55 + 0.25 * g, 0.12 + 0.1 * g))
         var mi_t := MultiMeshInstance3D.new()
         mi_t.multimesh = mm_t
         mi_t.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
