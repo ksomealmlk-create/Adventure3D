@@ -658,7 +658,7 @@ func _build_forest() -> void:
         var rng := RandomNumberGenerator.new()
         rng.seed = 12345
         var data: Array = preload("res://tree_data.gd").TREES
-        var per := 28
+        var per := 14
         for ti in range(data.size()):
                 var d: Dictionary = data[ti]
                 var mm := MultiMesh.new()
