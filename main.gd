@@ -620,19 +620,30 @@ void fragment() {
         m.set_shader_parameter("tint", tint)
         return m
 
-func _make_tree_crown() -> ArrayMesh:
+func _make_tree_mesh(d: Dictionary) -> ArrayMesh:
+        var vb: PackedByteArray = Marshalls.base64_to_raw(d["v"])
+        var tb: PackedByteArray = Marshalls.base64_to_raw(d["t"])
+        var fb: PackedByteArray = Marshalls.base64_to_raw(d["f"])
+        var pts: Array[Vector3] = []
+        for i in range(vb.size() / 6):
+                pts.append(Vector3(vb.decode_s16(i * 6), vb.decode_s16(i * 6 + 2), vb.decode_s16(i * 6 + 4)) / 30000.0)
         var st := SurfaceTool.new()
         st.begin(Mesh.PRIMITIVE_TRIANGLES)
-        var layers := [[0.0, 0.55, 1.0], [0.3, 0.5, 0.78], [0.58, 0.45, 0.55]]
-        for lay in layers:
-                var cone := CylinderMesh.new()
-                cone.top_radius = 0.0
-                cone.bottom_radius = lay[2]
-                cone.height = lay[1]
-                cone.radial_segments = 7
-                cone.rings = 1
-                st.append_from(cone, 0, Transform3D(Basis.IDENTITY, Vector3(0, lay[0] + lay[1] * 0.5, 0)))
-        return st.commit()
+        for k in range(fb.size()):
+                var is_trunk := fb[k] == 1
+                for j in [0, 2, 1]:
+                        var p: Vector3 = pts[tb.decode_u16((k * 3 + j) * 2)]
+                        var c := Color(0.36, 0.22, 0.12)
+                        if not is_trunk:
+                                c = Color(0.14, 0.52, 0.14).lerp(Color(0.3, 0.8, 0.25), clampf(p.y, 0.0, 1.0))
+                        st.set_color(c)
+                        st.add_vertex(p)
+        st.generate_normals()
+        var mesh := st.commit()
+        var mat := _tree_shader(0.0, Color(1, 1, 1))
+        mat.set_shader_parameter("sway", 0.03)
+        mesh.surface_set_material(0, mat)
+        return mesh
 
 func _build_forest() -> void:
         var ground := MeshInstance3D.new()
@@ -646,46 +657,28 @@ func _build_forest() -> void:
 
         var rng := RandomNumberGenerator.new()
         rng.seed = 12345
-        var trunk := CylinderMesh.new()
-        trunk.top_radius = 0.25
-        trunk.bottom_radius = 0.4
-        trunk.height = 1.0
-        trunk.radial_segments = 6
-        trunk.rings = 1
-        trunk.material = _tree_shader(0.5, Color(0.17, 0.12, 0.1))
-        var crown := _make_tree_crown()
-        crown.surface_set_material(0, _tree_shader(0.0, Color(1, 1, 1)))
-        var count := 160
-        var mm_t := MultiMesh.new()
-        mm_t.transform_format = MultiMesh.TRANSFORM_3D
-        mm_t.mesh = trunk
-        mm_t.instance_count = count
-        var mm_c := MultiMesh.new()
-        mm_c.transform_format = MultiMesh.TRANSFORM_3D
-        mm_c.use_colors = true
-        mm_c.mesh = crown
-        mm_c.instance_count = count
-        for i in range(count):
-                var side := -1.0 if rng.randf() < 0.5 else 1.0
-                var x := side * rng.randf_range(7.5, 38.0)
-                var z := rng.randf_range(25.0, -150.0)
-                var h := rng.randf_range(11.0, 20.0)
-                var th := h * 0.5
-                var tw := 1.0 + h * 0.02
-                mm_t.set_instance_transform(i, Transform3D(Basis.IDENTITY.scaled(Vector3(tw, th, tw)), Vector3(x, -10.0 + th * 0.5, z)))
-                var ch := h * 0.68
-                var cr := 1.5 + h * 0.1
-                mm_c.set_instance_transform(i, Transform3D(Basis.IDENTITY.scaled(Vector3(cr, ch, cr)), Vector3(x, -10.0 + h * 0.38, z)))
-                var g := rng.randf()
-                mm_c.set_instance_color(i, Color(0.15 + 0.12 * g, 0.55 + 0.25 * g, 0.12 + 0.1 * g))
-        var mi_t := MultiMeshInstance3D.new()
-        mi_t.multimesh = mm_t
-        mi_t.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-        add_child(mi_t)
-        var mi_c := MultiMeshInstance3D.new()
-        mi_c.multimesh = mm_c
-        mi_c.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-        add_child(mi_c)
+        var data: Array = preload("res://tree_data.gd").TREES
+        var per := 28
+        for ti in range(data.size()):
+                var d: Dictionary = data[ti]
+                var mm := MultiMesh.new()
+                mm.transform_format = MultiMesh.TRANSFORM_3D
+                mm.use_colors = true
+                mm.mesh = _make_tree_mesh(d)
+                mm.instance_count = per
+                for i in range(per):
+                        var side := -1.0 if rng.randf() < 0.5 else 1.0
+                        var x := side * rng.randf_range(12.0, 42.0)
+                        var z := rng.randf_range(25.0, -150.0)
+                        var h: float = rng.randf_range(d["hmin"], d["hmax"])
+                        var bs := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(h, h, h))
+                        mm.set_instance_transform(i, Transform3D(bs, Vector3(x, -10.0, z)))
+                        var v := rng.randf_range(0.8, 1.0)
+                        mm.set_instance_color(i, Color(v, v, v))
+                var mi := MultiMeshInstance3D.new()
+                mi.multimesh = mm
+                mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+                add_child(mi)
 
 func _burst(pos: Vector3, color: Color, amount: int, speed: float) -> void:
 	if not fx_on:
